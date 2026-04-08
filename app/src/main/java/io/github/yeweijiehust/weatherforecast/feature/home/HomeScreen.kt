@@ -1,16 +1,18 @@
 package io.github.yeweijiehust.weatherforecast.feature.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -20,7 +22,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -92,42 +96,50 @@ fun HomeScreen(
         onRefresh = onPullToRefresh,
         modifier = Modifier.fillMaxSize(),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxSize(),
         ) {
-            when (val state = uiState.state) {
-                HomeState.Uninitialized -> UninitializedState()
-                HomeState.EmptyNoCity -> EmptyState(onManageCitiesClick = onManageCitiesClick)
-                is HomeState.Loading -> LoadingState(city = state.city)
-                is HomeState.Content -> ContentState(
-                    snapshot = state.snapshot,
-                    isStaleCache = false,
-                    isRefreshing = false,
-                    onManageCitiesClick = onManageCitiesClick,
-                )
-                is HomeState.Refreshing -> ContentState(
-                    snapshot = state.snapshot,
-                    isStaleCache = false,
-                    isRefreshing = true,
-                    onManageCitiesClick = onManageCitiesClick,
-                )
-                is HomeState.ContentWithStaleCache -> ContentState(
-                    snapshot = state.snapshot,
-                    isStaleCache = true,
-                    isRefreshing = false,
-                    onManageCitiesClick = onManageCitiesClick,
-                )
-                is HomeState.ErrorNoCache -> ErrorState(
-                    city = state.city,
-                    onManageCitiesClick = onManageCitiesClick,
-                    onRetryClick = onPullToRefresh,
-                )
-            }
-            Button(onClick = onSettingsClick) {
-                Text(text = localizedStringResource(R.string.home_open_settings))
+            val horizontalPadding = if (maxWidth >= 840.dp) 40.dp else 24.dp
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .widthIn(max = 1120.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = horizontalPadding, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                when (val state = uiState.state) {
+                    HomeState.Uninitialized -> UninitializedState()
+                    HomeState.EmptyNoCity -> EmptyState(onManageCitiesClick = onManageCitiesClick)
+                    is HomeState.Loading -> LoadingState(city = state.city)
+                    is HomeState.Content -> ContentState(
+                        snapshot = state.snapshot,
+                        isStaleCache = false,
+                        isRefreshing = false,
+                        onManageCitiesClick = onManageCitiesClick,
+                    )
+                    is HomeState.Refreshing -> ContentState(
+                        snapshot = state.snapshot,
+                        isStaleCache = false,
+                        isRefreshing = true,
+                        onManageCitiesClick = onManageCitiesClick,
+                    )
+                    is HomeState.ContentWithStaleCache -> ContentState(
+                        snapshot = state.snapshot,
+                        isStaleCache = true,
+                        isRefreshing = false,
+                        onManageCitiesClick = onManageCitiesClick,
+                    )
+                    is HomeState.ErrorNoCache -> ErrorState(
+                        city = state.city,
+                        onManageCitiesClick = onManageCitiesClick,
+                        onRetryClick = onPullToRefresh,
+                    )
+                }
+                Button(onClick = onSettingsClick) {
+                    Text(text = localizedStringResource(R.string.home_open_settings))
+                }
             }
         }
     }
@@ -183,14 +195,68 @@ private fun ContentState(
     isRefreshing: Boolean,
     onManageCitiesClick: () -> Unit,
 ) {
-    CurrentWeatherHeroCard(
-        city = snapshot.city,
-        currentWeather = snapshot.currentWeather,
-    )
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        val isExpandedWidth = maxWidth >= 840.dp
+        if (isExpandedWidth) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Column(
+                    modifier = Modifier.weight(0.9f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CurrentWeatherHeroCard(
+                        city = snapshot.city,
+                        currentWeather = snapshot.currentWeather,
+                    )
+                    SnapshotStatusBlock(
+                        lastUpdatedEpochMillis = snapshot.lastUpdatedEpochMillis,
+                        isRefreshing = isRefreshing,
+                        isStaleCache = isStaleCache,
+                    )
+                    SecondaryMetricsBlock(currentWeather = snapshot.currentWeather)
+                }
+                Column(
+                    modifier = Modifier.weight(1.1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    HourlyForecastSection(hourlyForecast = snapshot.hourlyForecast)
+                    DailyForecastSection(dailyForecast = snapshot.dailyForecast)
+                }
+            }
+        } else {
+            CurrentWeatherHeroCard(
+                city = snapshot.city,
+                currentWeather = snapshot.currentWeather,
+            )
+            SnapshotStatusBlock(
+                lastUpdatedEpochMillis = snapshot.lastUpdatedEpochMillis,
+                isRefreshing = isRefreshing,
+                isStaleCache = isStaleCache,
+            )
+            SecondaryMetricsBlock(currentWeather = snapshot.currentWeather)
+            HourlyForecastSection(hourlyForecast = snapshot.hourlyForecast)
+            DailyForecastSection(dailyForecast = snapshot.dailyForecast)
+        }
+    }
+    Button(onClick = onManageCitiesClick) {
+        Text(text = localizedStringResource(R.string.home_manage_saved_cities))
+    }
+}
+
+@Composable
+private fun SnapshotStatusBlock(
+    lastUpdatedEpochMillis: Long,
+    isRefreshing: Boolean,
+    isStaleCache: Boolean,
+) {
     Text(
         text = localizedStringResource(
             R.string.home_last_updated,
-            snapshot.lastUpdatedEpochMillis.formattedLastUpdatedTime(),
+            lastUpdatedEpochMillis.formattedLastUpdatedTime(),
         ),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -208,12 +274,6 @@ private fun ContentState(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
         )
-    }
-    SecondaryMetricsBlock(currentWeather = snapshot.currentWeather)
-    HourlyForecastSection(hourlyForecast = snapshot.hourlyForecast)
-    DailyForecastSection(dailyForecast = snapshot.dailyForecast)
-    Button(onClick = onManageCitiesClick) {
-        Text(text = localizedStringResource(R.string.home_manage_saved_cities))
     }
 }
 
@@ -303,47 +363,61 @@ private fun CurrentWeatherHeroCard(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SecondaryMetricsBlock(
     currentWeather: CurrentWeather,
 ) {
-    FlowRow(
+    val windValue = listOf(
+        currentWeather.windDirection,
+        currentWeather.windScale,
+        currentWeather.windSpeed,
+    ).filter { it.isNotBlank() }.joinToString(separator = " / ").ifBlank { "-" }
+
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        maxItemsInEachRow = 2,
     ) {
-        MetricCard(
-            label = localizedStringResource(R.string.home_label_humidity),
-            value = "${currentWeather.humidity}%",
-        )
-        MetricCard(
-            label = localizedStringResource(R.string.home_label_wind),
-            value = listOf(
-                currentWeather.windDirection,
-                currentWeather.windScale,
-                currentWeather.windSpeed,
-            ).filter { it.isNotBlank() }.joinToString(separator = " / "),
-        )
-        MetricCard(
-            label = localizedStringResource(R.string.home_label_precipitation),
-            value = currentWeather.precipitation,
-        )
-        MetricCard(
-            label = localizedStringResource(R.string.home_label_visibility),
-            value = currentWeather.visibility,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = localizedStringResource(R.string.home_label_humidity),
+                value = "${currentWeather.humidity}%",
+            )
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = localizedStringResource(R.string.home_label_wind),
+                value = windValue,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = localizedStringResource(R.string.home_label_precipitation),
+                value = currentWeather.precipitation,
+            )
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = localizedStringResource(R.string.home_label_visibility),
+                value = currentWeather.visibility,
+            )
+        }
     }
 }
 
 @Composable
 private fun MetricCard(
+    modifier: Modifier = Modifier,
     label: String,
     value: String,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -357,6 +431,8 @@ private fun MetricCard(
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

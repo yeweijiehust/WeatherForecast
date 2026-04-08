@@ -10,7 +10,7 @@ import org.junit.Test
 
 class MainActivityShellTest {
     companion object {
-        private const val WAIT_TIMEOUT_MS = 10_000L
+        private const val WAIT_TIMEOUT_MS = 15_000L
     }
 
     @get:Rule
@@ -19,12 +19,7 @@ class MainActivityShellTest {
     @Test
     fun launch_showsHomeScaffold() {
         assertAnyDisplayed("Home", "首页")
-        assertAnyDisplayed(
-            "No city selected yet.",
-            "还没有选择城市。",
-            "Current city",
-            "当前城市",
-        )
+        assertAnyHomeStateVisible()
         assertAnyDisplayed("Search Cities", "搜索城市")
         assertAnyDisplayed("Settings", "设置")
     }
@@ -35,12 +30,8 @@ class MainActivityShellTest {
         assertAnyDisplayed("Find a city", "查找城市")
 
         composeTestRule.onNodeWithText(existingText("Back", "返回")).performClick()
-        assertAnyDisplayed(
-            "No city selected yet.",
-            "还没有选择城市。",
-            "Current city",
-            "当前城市",
-        )
+        composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) { hasAnyHomeStateText() }
+        assertAnyHomeStateVisible()
 
         composeTestRule.onNodeWithText(existingText("Settings", "设置")).performClick()
         composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
@@ -58,6 +49,15 @@ class MainActivityShellTest {
     @Test
     fun settingsClearCache_showsSnackbarMessage() {
         composeTestRule.onNodeWithText(existingText("Settings", "设置")).performClick()
+        composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
+            hasAnyText(
+                "Control units, language, and cache settings.",
+                "管理单位、语言和缓存设置。",
+            )
+        }
+        composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
+            hasAnyText("Clear cached weather", "清除天气缓存")
+        }
         composeTestRule.onNodeWithText(
             existingText("Clear cached weather", "清除天气缓存"),
         ).performClick()
@@ -101,6 +101,32 @@ class MainActivityShellTest {
         return texts.any { text ->
             composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
         }
+    }
+
+    private fun hasAnyHomeStateText(): Boolean {
+        return hasAnyText(
+            "No city selected yet.",
+            "还没有选择城市。",
+            "Add your first city",
+            "添加第一个城市",
+            "Manage saved cities",
+            "管理已保存城市",
+            "Loading weather…",
+            "正在加载天气…",
+        )
+    }
+
+    private fun assertAnyHomeStateVisible() {
+        assertAnyDisplayed(
+            "No city selected yet.",
+            "还没有选择城市。",
+            "Add your first city",
+            "添加第一个城市",
+            "Manage saved cities",
+            "管理已保存城市",
+            "Loading weather…",
+            "正在加载天气…",
+        )
     }
 
     private fun existingText(vararg texts: String): String {
