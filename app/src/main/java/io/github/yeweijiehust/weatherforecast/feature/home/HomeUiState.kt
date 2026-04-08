@@ -6,10 +6,12 @@ import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 
 data class HomeUiState(
-    val state: HomeState = HomeState.EmptyNoCity,
+    val state: HomeState = HomeState.Uninitialized,
 )
 
 sealed interface HomeState {
+    data object Uninitialized : HomeState
+
     data object EmptyNoCity : HomeState
 
     data class Loading(
@@ -17,13 +19,26 @@ sealed interface HomeState {
     ) : HomeState
 
     data class Content(
-        val city: City,
-        val currentWeather: CurrentWeather,
-        val hourlyForecast: List<HourlyForecast>,
-        val dailyForecast: List<DailyForecast>,
+        val snapshot: HomeSnapshot,
+    ) : HomeState
+
+    data class Refreshing(
+        val snapshot: HomeSnapshot,
+    ) : HomeState
+
+    data class ContentWithStaleCache(
+        val snapshot: HomeSnapshot,
     ) : HomeState
 
     data class ErrorNoCache(
         val city: City,
     ) : HomeState
 }
+
+data class HomeSnapshot(
+    val city: City,
+    val currentWeather: CurrentWeather,
+    val hourlyForecast: List<HourlyForecast>,
+    val dailyForecast: List<DailyForecast>,
+    val lastUpdatedEpochMillis: Long,
+)

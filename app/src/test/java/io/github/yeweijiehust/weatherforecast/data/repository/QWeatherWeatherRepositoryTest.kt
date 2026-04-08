@@ -101,6 +101,54 @@ class QWeatherWeatherRepositoryTest {
     }
 
     @Test
+    fun observeCurrentWeather_returnsCachedDataThenUpdatesAfterRefresh() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        val localDataSource = FakeCurrentWeatherLocalDataSource(
+            currentWeather = sampleCurrentWeatherLocal().copy(temperature = "26"),
+        )
+        coEvery {
+            weatherApiService.getCurrentWeather(
+                locationId = "101020100",
+                language = "en",
+                unit = "m",
+            )
+        } returns CurrentWeatherResponseDto(
+            code = "200",
+            now = CurrentWeatherDto(
+                observationTime = "2026-04-08T14:15+08:00",
+                temperature = "29",
+                feelsLike = "31",
+                conditionText = "Sunny",
+                conditionIcon = "100",
+                humidity = "60",
+                windDirection = "East",
+                windScale = "3",
+                windSpeed = "10",
+                precipitation = "0.0",
+                pressure = "1011",
+                visibility = "16",
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            currentWeatherLocalDataSource = localDataSource,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val cached = repository.observeCurrentWeather("101020100").first()
+        repository.refreshCurrentWeather("101020100")
+        val refreshed = repository.observeCurrentWeather("101020100").first()
+
+        assertThat(cached?.temperature).isEqualTo("26")
+        assertThat(refreshed?.temperature).isEqualTo("29")
+    }
+
+    @Test
     fun refreshCurrentWeather_requestsUsingCurrentSettingsAndCachesResult() = runTest {
         val weatherApiService = mockk<WeatherApiService>()
         val localDataSource = FakeCurrentWeatherLocalDataSource()

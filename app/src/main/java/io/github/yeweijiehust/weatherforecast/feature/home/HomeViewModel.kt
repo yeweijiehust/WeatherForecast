@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.yeweijiehust.weatherforecast.domain.model.City
+import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
+import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDailyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveCurrentWeatherUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDefaultCityUseCase
@@ -35,23 +38,38 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    private var currentWeatherObservationJob: Job? = null
+    private var snapshotObservationJob: Job? = null
+    private var refreshJob: Job? = null
+    private var activeCity: City? = null
+    private var latestSnapshot: HomeSnapshot? = null
+    private var isRefreshing = false
+    private var isStaleCache = false
 
     init {
         viewModelScope.launch {
             observeDefaultCityUseCase().collectLatest { city ->
-                currentWeatherObservationJob?.cancel()
+                snapshotObservationJob?.cancel()
+                refreshJob?.cancel()
+                latestSnapshot = null
+                activeCity = city
+                isRefreshing = false
+                isStaleCache = false
                 when (city) {
                     null -> _uiState.value = HomeUiState(state = HomeState.EmptyNoCity)
-                    else -> observeCityWeather(city)
+                    else -> observeCityData(city)
                 }
             }
         }
     }
 
-    private fun observeCityWeather(city: City) {
+    fun onPullToRefresh() {
+        val city = activeCity ?: return
+        triggerRefresh(city)
+    }
+
+    private fun observeCityData(city: City) {
         _uiState.value = HomeUiState(state = HomeState.Loading(city))
-        currentWeatherObservationJob = viewModelScope.launch {
+        snapshotObservationJob = viewModelScope.launch {
             combine(
                 observeCurrentWeatherUseCase(city.id),
                 observeHourlyForecastUseCase(city.id),
@@ -60,23 +78,78 @@ class HomeViewModel @Inject constructor(
                 Triple(currentWeather, hourlyForecast, dailyForecast)
             }.collect { (currentWeather, hourlyForecast, dailyForecast) ->
                 if (currentWeather != null) {
-                    _uiState.value = HomeUiState(
-                        state = HomeState.Content(
-                            city = city,
+                    val snapshot = HomeSnapshot(
+                        city = city,
+                        currentWeather = currentWeather,
+                        hourlyForecast = hourlyForecast,
+                        dailyForecast = dailyForecast,
+                        lastUpdatedEpochMillis = latestUpdatedAt(
                             currentWeather = currentWeather,
                             hourlyForecast = hourlyForecast,
                             dailyForecast = dailyForecast,
                         ),
                     )
+                    latestSnapshot = snapshot
+                    _uiState.value = HomeUiState(
+                        state = when {
+                            isRefreshing -> HomeState.Refreshing(snapshot)
+                            isStaleCache -> HomeState.ContentWithStaleCache(snapshot)
+                            else -> HomeState.Content(snapshot)
+                        },
+                    )
                 }
             }
         }
-        viewModelScope.launch {
+        triggerRefresh(city)
+    }
+
+    private fun triggerRefresh(city: City) {
+        if (refreshJob?.isActive == true) return
+        refreshJob = viewModelScope.launch {
+            latestSnapshot?.let { snapshot ->
+                isRefreshing = true
+                _uiState.value = HomeUiState(
+                    state = HomeState.Refreshing(snapshot),
+                )
+            }
+
             val currentRefresh = refreshCurrentHourlyDailyWeather(city.id)
-            if (currentRefresh.isFailure && !hasContentFor(city.id)) {
+            isRefreshing = false
+            if (currentRefresh.isSuccess) {
+                isStaleCache = false
+                latestSnapshot?.let { snapshot ->
+                    _uiState.value = HomeUiState(
+                        state = HomeState.Content(snapshot),
+                    )
+                }
+            } else if (latestSnapshotFor(city.id) != null) {
+                isStaleCache = true
+                _uiState.value = HomeUiState(
+                    state = HomeState.ContentWithStaleCache(
+                        snapshot = latestSnapshotFor(city.id)!!,
+                    ),
+                )
+            } else {
                 _uiState.value = HomeUiState(state = HomeState.ErrorNoCache(city))
             }
         }
+    }
+
+    private fun latestSnapshotFor(cityId: String): HomeSnapshot? {
+        val snapshot = latestSnapshot
+        return if (snapshot?.city?.id == cityId) snapshot else null
+    }
+
+    private fun latestUpdatedAt(
+        currentWeather: CurrentWeather,
+        hourlyForecast: List<HourlyForecast>,
+        dailyForecast: List<DailyForecast>,
+    ): Long {
+        return buildList {
+            add(currentWeather.fetchedAtEpochMillis)
+            addAll(hourlyForecast.map { it.fetchedAtEpochMillis })
+            addAll(dailyForecast.map { it.fetchedAtEpochMillis })
+        }.maxOrNull() ?: currentWeather.fetchedAtEpochMillis
     }
 
     private suspend fun refreshCurrentHourlyDailyWeather(cityId: String): Result<Unit> = coroutineScope {
@@ -87,10 +160,5 @@ class HomeViewModel @Inject constructor(
         hourlyRefresh.await()
         dailyRefresh.await()
         currentResult
-    }
-
-    private fun hasContentFor(cityId: String): Boolean {
-        val state = _uiState.value.state
-        return state is HomeState.Content && state.city.id == cityId
     }
 }

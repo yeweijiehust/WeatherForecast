@@ -16,11 +16,13 @@ import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshDailyForecas
 import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshHourlyForecastUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -42,69 +44,97 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun state_isEmptyWhenNoDefaultCityExists() = runTest {
+    fun state_startsUninitialized_thenBecomesEmptyWhenNoDefaultCityExists() = runTest {
         val viewModel = createViewModel(defaultCity = null)
 
+        assertThat(viewModel.uiState.value.state).isEqualTo(HomeState.Uninitialized)
         dispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.state).isEqualTo(HomeState.EmptyNoCity)
     }
 
     @Test
-    fun state_exposesCurrentWeatherContentWhenCacheExists() = runTest {
+    fun state_flowsLoadingToContentWhenCacheExists() = runTest {
         val defaultCity = sampleCity()
-        val cachedWeather = sampleCurrentWeather(cityId = defaultCity.id)
-        val cachedHourly = listOf(sampleHourlyForecast(cityId = defaultCity.id))
-        val cachedDaily = listOf(sampleDailyForecast(cityId = defaultCity.id))
+        val repository = FakeWeatherRepository(
+            currentWeather = sampleCurrentWeather(defaultCity.id),
+            hourlyForecast = listOf(sampleHourlyForecast(defaultCity.id)),
+            dailyForecast = listOf(sampleDailyForecast(defaultCity.id)),
+        )
         val viewModel = createViewModel(
             defaultCity = defaultCity,
-            currentWeather = cachedWeather,
-            hourlyForecast = cachedHourly,
-            dailyForecast = cachedDaily,
+            weatherRepository = repository,
         )
 
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.state).isEqualTo(
-            HomeState.Content(
-                city = defaultCity,
-                currentWeather = cachedWeather,
-                hourlyForecast = cachedHourly,
-                dailyForecast = cachedDaily,
-            ),
-        )
+        val state = viewModel.uiState.value.state
+        assertThat(state).isInstanceOf(HomeState.Content::class.java)
+        val snapshot = (state as HomeState.Content).snapshot
+        assertThat(snapshot.city.id).isEqualTo(defaultCity.id)
+        assertThat(snapshot.currentWeather.conditionText).isEqualTo("Sunny")
+        assertThat(snapshot.hourlyForecast).hasSize(1)
+        assertThat(snapshot.dailyForecast).hasSize(1)
     }
 
     @Test
-    fun state_exposesCurrentWeatherContentWhenHourlyCacheIsEmpty() = runTest {
+    fun state_transitionsContentToRefreshingToContentOnManualRefresh() = runTest {
         val defaultCity = sampleCity()
-        val cachedWeather = sampleCurrentWeather(cityId = defaultCity.id)
+        val repository = FakeWeatherRepository(
+            currentWeather = sampleCurrentWeather(defaultCity.id),
+            hourlyForecast = listOf(sampleHourlyForecast(defaultCity.id)),
+            dailyForecast = listOf(sampleDailyForecast(defaultCity.id)),
+        )
         val viewModel = createViewModel(
             defaultCity = defaultCity,
-            currentWeather = cachedWeather,
-            hourlyForecast = emptyList(),
-            dailyForecast = emptyList(),
+            weatherRepository = repository,
         )
-
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.state).isEqualTo(
-            HomeState.Content(
-                city = defaultCity,
-                currentWeather = cachedWeather,
-                hourlyForecast = emptyList(),
-                dailyForecast = emptyList(),
-            ),
+        repository.refreshDelayMillis = 1_000L
+        viewModel.onPullToRefresh()
+        dispatcher.scheduler.runCurrent()
+
+        assertThat(viewModel.uiState.value.state).isInstanceOf(HomeState.Refreshing::class.java)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertThat(viewModel.uiState.value.state).isInstanceOf(HomeState.Content::class.java)
+    }
+
+    @Test
+    fun state_becomesContentWithStaleCacheWhenRefreshFailsWithCache() = runTest {
+        val defaultCity = sampleCity()
+        val repository = FakeWeatherRepository(
+            currentWeather = sampleCurrentWeather(defaultCity.id),
+            hourlyForecast = listOf(sampleHourlyForecast(defaultCity.id)),
+            dailyForecast = listOf(sampleDailyForecast(defaultCity.id)),
         )
+        val viewModel = createViewModel(
+            defaultCity = defaultCity,
+            weatherRepository = repository,
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        repository.failNextCurrentRefresh = true
+        viewModel.onPullToRefresh()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value.state
+        assertThat(state).isInstanceOf(HomeState.ContentWithStaleCache::class.java)
+        assertThat((state as HomeState.ContentWithStaleCache).snapshot.city.id).isEqualTo(defaultCity.id)
     }
 
     @Test
     fun state_becomesErrorWhenRefreshFailsWithoutCache() = runTest {
         val defaultCity = sampleCity()
+        val repository = FakeWeatherRepository(
+            currentWeather = null,
+            hourlyForecast = emptyList(),
+            dailyForecast = emptyList(),
+            failNextCurrentRefresh = true,
+        )
         val viewModel = createViewModel(
             defaultCity = defaultCity,
-            currentWeather = null,
-            refreshFailure = IllegalStateException("boom"),
+            weatherRepository = repository,
         )
 
         dispatcher.scheduler.advanceUntilIdle()
@@ -114,17 +144,8 @@ class HomeViewModelTest {
 
     private fun createViewModel(
         defaultCity: City?,
-        currentWeather: CurrentWeather? = null,
-        hourlyForecast: List<HourlyForecast> = emptyList(),
-        dailyForecast: List<DailyForecast> = emptyList(),
-        refreshFailure: Throwable? = null,
+        weatherRepository: FakeWeatherRepository = FakeWeatherRepository(),
     ): HomeViewModel {
-        val weatherRepository = FakeWeatherRepository(
-            currentWeather = currentWeather,
-            hourlyForecast = hourlyForecast,
-            dailyForecast = dailyForecast,
-            refreshFailure = refreshFailure,
-        )
         return HomeViewModel(
             observeDefaultCityUseCase = ObserveDefaultCityUseCase(
                 cityRepository = FakeCityRepository(defaultCity = defaultCity),
@@ -223,10 +244,11 @@ class HomeViewModelTest {
     }
 
     private class FakeWeatherRepository(
-        currentWeather: CurrentWeather?,
-        hourlyForecast: List<HourlyForecast>,
-        dailyForecast: List<DailyForecast>,
-        private val refreshFailure: Throwable?,
+        currentWeather: CurrentWeather? = null,
+        hourlyForecast: List<HourlyForecast> = emptyList(),
+        dailyForecast: List<DailyForecast> = emptyList(),
+        var failNextCurrentRefresh: Boolean = false,
+        var refreshDelayMillis: Long = 0L,
     ) : WeatherRepository {
         private val currentWeatherFlow = MutableStateFlow(currentWeather)
         private val hourlyForecastFlow = MutableStateFlow(hourlyForecast)
@@ -235,7 +257,13 @@ class HomeViewModelTest {
         override fun observeCurrentWeather(cityId: String): Flow<CurrentWeather?> = currentWeatherFlow
 
         override suspend fun refreshCurrentWeather(cityId: String) {
-            refreshFailure?.let { throw it }
+            if (refreshDelayMillis > 0) {
+                delay(refreshDelayMillis)
+            }
+            if (failNextCurrentRefresh) {
+                failNextCurrentRefresh = false
+                throw IllegalStateException("boom")
+            }
         }
 
         override fun observeHourlyForecast(cityId: String): Flow<List<HourlyForecast>> = hourlyForecastFlow

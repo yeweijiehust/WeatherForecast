@@ -13,8 +13,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -27,8 +29,10 @@ import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -45,40 +49,72 @@ fun HomeRoute(
         uiState = uiState,
         onManageCitiesClick = onManageCitiesClick,
         onSettingsClick = onSettingsClick,
+        onPullToRefresh = viewModel::onPullToRefresh,
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     uiState: HomeUiState,
     onManageCitiesClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onPullToRefresh: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    val isRefreshing = uiState.state is HomeState.Refreshing
+
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onPullToRefresh,
+        modifier = Modifier.fillMaxSize(),
     ) {
-        when (val state = uiState.state) {
-            HomeState.EmptyNoCity -> EmptyState(onManageCitiesClick = onManageCitiesClick)
-            is HomeState.Loading -> LoadingState(city = state.city)
-            is HomeState.Content -> ContentState(
-                city = state.city,
-                currentWeather = state.currentWeather,
-                hourlyForecast = state.hourlyForecast,
-                dailyForecast = state.dailyForecast,
-                onManageCitiesClick = onManageCitiesClick,
-            )
-            is HomeState.ErrorNoCache -> ErrorState(
-                city = state.city,
-                onManageCitiesClick = onManageCitiesClick,
-            )
-        }
-        Button(onClick = onSettingsClick) {
-            Text(text = localizedStringResource(R.string.home_open_settings))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            when (val state = uiState.state) {
+                HomeState.Uninitialized -> UninitializedState()
+                HomeState.EmptyNoCity -> EmptyState(onManageCitiesClick = onManageCitiesClick)
+                is HomeState.Loading -> LoadingState(city = state.city)
+                is HomeState.Content -> ContentState(
+                    snapshot = state.snapshot,
+                    isStaleCache = false,
+                    isRefreshing = false,
+                    onManageCitiesClick = onManageCitiesClick,
+                )
+                is HomeState.Refreshing -> ContentState(
+                    snapshot = state.snapshot,
+                    isStaleCache = false,
+                    isRefreshing = true,
+                    onManageCitiesClick = onManageCitiesClick,
+                )
+                is HomeState.ContentWithStaleCache -> ContentState(
+                    snapshot = state.snapshot,
+                    isStaleCache = true,
+                    isRefreshing = false,
+                    onManageCitiesClick = onManageCitiesClick,
+                )
+                is HomeState.ErrorNoCache -> ErrorState(
+                    city = state.city,
+                    onManageCitiesClick = onManageCitiesClick,
+                    onRetryClick = onPullToRefresh,
+                )
+            }
+            Button(onClick = onSettingsClick) {
+                Text(text = localizedStringResource(R.string.home_open_settings))
+            }
         }
     }
+}
+
+@Composable
+private fun UninitializedState() {
+    Text(
+        text = localizedStringResource(R.string.home_loading),
+        style = MaterialTheme.typography.bodyLarge,
+    )
 }
 
 @Composable
@@ -118,19 +154,40 @@ private fun LoadingState(
 
 @Composable
 private fun ContentState(
-    city: City,
-    currentWeather: CurrentWeather,
-    hourlyForecast: List<HourlyForecast>,
-    dailyForecast: List<DailyForecast>,
+    snapshot: HomeSnapshot,
+    isStaleCache: Boolean,
+    isRefreshing: Boolean,
     onManageCitiesClick: () -> Unit,
 ) {
     CurrentWeatherHeroCard(
-        city = city,
-        currentWeather = currentWeather,
+        city = snapshot.city,
+        currentWeather = snapshot.currentWeather,
     )
-    SecondaryMetricsBlock(currentWeather = currentWeather)
-    HourlyForecastSection(hourlyForecast = hourlyForecast)
-    DailyForecastSection(dailyForecast = dailyForecast)
+    Text(
+        text = localizedStringResource(
+            R.string.home_last_updated,
+            snapshot.lastUpdatedEpochMillis.formattedLastUpdatedTime(),
+        ),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (isRefreshing) {
+        Text(
+            text = localizedStringResource(R.string.home_refreshing),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+    if (isStaleCache) {
+        Text(
+            text = localizedStringResource(R.string.home_stale_cache),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+    SecondaryMetricsBlock(currentWeather = snapshot.currentWeather)
+    HourlyForecastSection(hourlyForecast = snapshot.hourlyForecast)
+    DailyForecastSection(dailyForecast = snapshot.dailyForecast)
     Button(onClick = onManageCitiesClick) {
         Text(text = localizedStringResource(R.string.home_manage_saved_cities))
     }
@@ -140,6 +197,7 @@ private fun ContentState(
 private fun ErrorState(
     city: City,
     onManageCitiesClick: () -> Unit,
+    onRetryClick: () -> Unit,
 ) {
     Text(
         text = city.name,
@@ -149,8 +207,15 @@ private fun ErrorState(
         text = localizedStringResource(R.string.home_error_no_cache),
         style = MaterialTheme.typography.bodyLarge,
     )
-    Button(onClick = onManageCitiesClick) {
-        Text(text = localizedStringResource(R.string.home_manage_saved_cities))
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Button(onClick = onRetryClick) {
+            Text(text = localizedStringResource(R.string.action_retry))
+        }
+        Button(onClick = onManageCitiesClick) {
+            Text(text = localizedStringResource(R.string.home_manage_saved_cities))
+        }
     }
 }
 
@@ -439,4 +504,13 @@ private fun DailyForecast.formattedForecastDate(): String {
             DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()),
         )
     }.getOrDefault(forecastDate)
+}
+
+private fun Long.formattedLastUpdatedTime(): String {
+    return runCatching {
+        Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalTime().format(
+            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+                .withLocale(Locale.getDefault()),
+        )
+    }.getOrDefault(this.toString())
 }

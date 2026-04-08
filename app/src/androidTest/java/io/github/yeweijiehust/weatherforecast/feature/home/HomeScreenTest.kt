@@ -26,6 +26,7 @@ class HomeScreenTest {
                         uiState = HomeUiState(state = HomeState.EmptyNoCity),
                         onManageCitiesClick = {},
                         onSettingsClick = {},
+                        onPullToRefresh = {},
                     )
                 }
             }
@@ -42,69 +43,11 @@ class HomeScreenTest {
                 WeatherForecastTheme {
                     HomeScreen(
                         uiState = HomeUiState(
-                            state = HomeState.Content(
-                                city = City(
-                                    id = "101020100",
-                                    name = "Shanghai",
-                                    adm1 = "Shanghai",
-                                    adm2 = "Shanghai",
-                                    country = "China",
-                                    lat = "31.23",
-                                    lon = "121.47",
-                                    timeZone = "Asia/Shanghai",
-                                    isDefault = true,
-                                ),
-                                currentWeather = CurrentWeather(
-                                    cityId = "101020100",
-                                    observationTime = "2026-04-08T13:45+08:00",
-                                    temperature = "26",
-                                    feelsLike = "28",
-                                    conditionText = "Sunny",
-                                    conditionIcon = "100",
-                                    humidity = "65",
-                                    windDirection = "East",
-                                    windScale = "3",
-                                    windSpeed = "15",
-                                    precipitation = "0.0",
-                                    pressure = "1012",
-                                    visibility = "16",
-                                    fetchedAtEpochMillis = 100L,
-                                ),
-                                hourlyForecast = listOf(
-                                    HourlyForecast(
-                                        cityId = "101020100",
-                                        forecastTime = "2026-04-08T16:00+08:00",
-                                        temperature = "24",
-                                        conditionText = "Cloudy",
-                                        conditionIcon = "101",
-                                        precipitationProbability = "20",
-                                        precipitation = "0.0",
-                                        windDirection = "South",
-                                        windScale = "2",
-                                        windSpeed = "13",
-                                        fetchedAtEpochMillis = 100L,
-                                    ),
-                                ),
-                                dailyForecast = listOf(
-                                    DailyForecast(
-                                        cityId = "101020100",
-                                        forecastDate = "2026-04-09",
-                                        tempMax = "30",
-                                        tempMin = "22",
-                                        conditionTextDay = "Windy",
-                                        conditionIconDay = "100",
-                                        precipitationProbability = "10",
-                                        precipitation = "0.0",
-                                        windDirectionDay = "South",
-                                        windScaleDay = "3",
-                                        windSpeedDay = "16",
-                                        fetchedAtEpochMillis = 100L,
-                                    ),
-                                ),
-                            ),
+                            state = HomeState.Content(snapshot = sampleSnapshot()),
                         ),
                         onManageCitiesClick = {},
                         onSettingsClick = {},
+                        onPullToRefresh = {},
                     )
                 }
             }
@@ -120,5 +63,134 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("Cloudy").assertIsDisplayed()
         composeTestRule.onNodeWithText("POP 20%").assertIsDisplayed()
         composeTestRule.onNodeWithText("Next 7 Days").assertIsDisplayed()
+    }
+
+    @Test
+    fun refreshingState_keepsContentVisibleAndShowsRefreshingLabel() {
+        composeTestRule.setContent {
+            WeatherForecastLocalizedContent(language = AppLanguage.English) {
+                WeatherForecastTheme {
+                    HomeScreen(
+                        uiState = HomeUiState(
+                            state = HomeState.Refreshing(snapshot = sampleSnapshot()),
+                        ),
+                        onManageCitiesClick = {},
+                        onSettingsClick = {},
+                        onPullToRefresh = {},
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("Refreshing weather…").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Shanghai").assertIsDisplayed()
+    }
+
+    @Test
+    fun staleState_showsCacheFallbackLabel() {
+        composeTestRule.setContent {
+            WeatherForecastLocalizedContent(language = AppLanguage.English) {
+                WeatherForecastTheme {
+                    HomeScreen(
+                        uiState = HomeUiState(
+                            state = HomeState.ContentWithStaleCache(snapshot = sampleSnapshot()),
+                        ),
+                        onManageCitiesClick = {},
+                        onSettingsClick = {},
+                        onPullToRefresh = {},
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("Refresh failed. Showing cached data.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Shanghai").assertIsDisplayed()
+    }
+
+    @Test
+    fun errorState_showsRetryAction() {
+        composeTestRule.setContent {
+            WeatherForecastLocalizedContent(language = AppLanguage.English) {
+                WeatherForecastTheme {
+                    HomeScreen(
+                        uiState = HomeUiState(
+                            state = HomeState.ErrorNoCache(
+                                city = sampleSnapshot().city,
+                            ),
+                        ),
+                        onManageCitiesClick = {},
+                        onSettingsClick = {},
+                        onPullToRefresh = {},
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
+        composeTestRule.onNodeWithText("We couldn't load current weather for this city.").assertIsDisplayed()
+    }
+
+    private fun sampleSnapshot(): HomeSnapshot {
+        return HomeSnapshot(
+            city = City(
+                id = "101020100",
+                name = "Shanghai",
+                adm1 = "Shanghai",
+                adm2 = "Shanghai",
+                country = "China",
+                lat = "31.23",
+                lon = "121.47",
+                timeZone = "Asia/Shanghai",
+                isDefault = true,
+            ),
+            currentWeather = CurrentWeather(
+                cityId = "101020100",
+                observationTime = "2026-04-08T13:45+08:00",
+                temperature = "26",
+                feelsLike = "28",
+                conditionText = "Sunny",
+                conditionIcon = "100",
+                humidity = "65",
+                windDirection = "East",
+                windScale = "3",
+                windSpeed = "15",
+                precipitation = "0.0",
+                pressure = "1012",
+                visibility = "16",
+                fetchedAtEpochMillis = 100L,
+            ),
+            hourlyForecast = listOf(
+                HourlyForecast(
+                    cityId = "101020100",
+                    forecastTime = "2026-04-08T16:00+08:00",
+                    temperature = "24",
+                    conditionText = "Cloudy",
+                    conditionIcon = "101",
+                    precipitationProbability = "20",
+                    precipitation = "0.0",
+                    windDirection = "South",
+                    windScale = "2",
+                    windSpeed = "13",
+                    fetchedAtEpochMillis = 100L,
+                ),
+            ),
+            dailyForecast = listOf(
+                DailyForecast(
+                    cityId = "101020100",
+                    forecastDate = "2026-04-09",
+                    tempMax = "30",
+                    tempMin = "22",
+                    conditionTextDay = "Windy",
+                    conditionIconDay = "100",
+                    precipitationProbability = "10",
+                    precipitation = "0.0",
+                    windDirectionDay = "South",
+                    windScaleDay = "3",
+                    windSpeedDay = "16",
+                    fetchedAtEpochMillis = 100L,
+                ),
+            ),
+            lastUpdatedEpochMillis = 100L,
+        )
     }
 }

@@ -28,6 +28,9 @@
     <string name="home_label_wind">风况</string>
     <string name="home_label_precipitation">降水</string>
     <string name="home_label_visibility">能见度</string>
+    <string name="home_last_updated">最近更新 %1$s</string>
+    <string name="home_refreshing">正在刷新天气…</string>
+    <string name="home_stale_cache">刷新失败，当前显示缓存数据。</string>
     <string name="home_hourly_title">未来 24 小时</string>
     <string name="home_hourly_empty">当前暂无逐小时预报。</string>
     <string name="home_hourly_pop">降水概率 %1$s%%</string>
