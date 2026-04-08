@@ -15,14 +15,14 @@ class MainActivityShellTest {
     fun launch_showsHomeScaffold() {
         composeTestRule.onNodeWithText("Home").assertIsDisplayed()
         composeTestRule.onNodeWithText("Project foundation is ready.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Manage Cities").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Search Cities").assertIsDisplayed()
         composeTestRule.onNodeWithText("Settings").assertIsDisplayed()
     }
 
     @Test
     fun navigationShell_allowsMovingBetweenScreens() {
-        composeTestRule.onNodeWithText("Manage Cities").performClick()
-        composeTestRule.onNodeWithText("Search screen shell").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Search Cities").performClick()
+        composeTestRule.onNodeWithText("Find a city").assertIsDisplayed()
 
         composeTestRule.onNodeWithText("Back").performClick()
         composeTestRule.onNodeWithText("Project foundation is ready.").assertIsDisplayed()

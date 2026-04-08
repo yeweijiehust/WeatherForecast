@@ -1,0 +1,27 @@
+package io.github.yeweijiehust.weatherforecast.feature.search
+
+import io.github.yeweijiehust.weatherforecast.domain.model.City
+
+data class CitySearchUiState(
+    val query: String = "",
+    val resultState: CitySearchResultState = CitySearchResultState.Idle,
+)
+
+sealed interface CitySearchResultState {
+    data object Idle : CitySearchResultState
+
+    data object Searching : CitySearchResultState
+
+    data class Results(
+        val cities: List<City>,
+    ) : CitySearchResultState
+
+    data class EmptyResult(
+        val query: String,
+    ) : CitySearchResultState
+
+    data class Error(
+        val query: String,
+        val message: String,
+    ) : CitySearchResultState
+}

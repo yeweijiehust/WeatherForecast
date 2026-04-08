@@ -5,7 +5,7 @@ enum class WeatherForecastDestination(
     val title: String,
 ) {
     Home(route = "home", title = "Home"),
-    Search(route = "search", title = "Manage Cities"),
+    Search(route = "search", title = "Search Cities"),
     Settings(route = "settings", title = "Settings");
 
     companion object {

@@ -19,7 +19,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.yeweijiehust.weatherforecast.core.navigation.WeatherForecastDestination
 import io.github.yeweijiehust.weatherforecast.feature.home.HomeScreen
-import io.github.yeweijiehust.weatherforecast.feature.search.CitySearchScreen
+import io.github.yeweijiehust.weatherforecast.feature.search.CitySearchRoute
 import io.github.yeweijiehust.weatherforecast.feature.settings.SettingsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +50,7 @@ fun WeatherForecastApp() {
                                 navController.navigate(WeatherForecastDestination.Search.route)
                             }
                         ) {
-                            Text(text = "Manage Cities")
+                            Text(text = "Search Cities")
                         }
                         TextButton(
                             onClick = {
@@ -81,7 +81,7 @@ fun WeatherForecastApp() {
                 )
             }
             composable(WeatherForecastDestination.Search.route) {
-                CitySearchScreen()
+                CitySearchRoute()
             }
             composable(WeatherForecastDestination.Settings.route) {
                 SettingsScreen()

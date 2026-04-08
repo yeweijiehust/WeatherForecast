@@ -31,7 +31,7 @@ fun HomeScreen(
             style = MaterialTheme.typography.bodyLarge
         )
         Button(onClick = onManageCitiesClick) {
-            Text(text = "Open City Management")
+            Text(text = "Open City Search")
         }
         Button(onClick = onSettingsClick) {
             Text(text = "Open Settings Screen")
