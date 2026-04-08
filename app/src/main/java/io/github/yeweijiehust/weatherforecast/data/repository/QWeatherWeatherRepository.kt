@@ -6,10 +6,12 @@ import io.github.yeweijiehust.weatherforecast.data.local.source.DailyForecastLoc
 import io.github.yeweijiehust.weatherforecast.data.local.source.HourlyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.remote.api.WeatherApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
+import io.github.yeweijiehust.weatherforecast.data.remote.mapper.toDomain
 import io.github.yeweijiehust.weatherforecast.data.remote.mapper.toLocalModel
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
 import javax.inject.Inject
@@ -150,7 +152,39 @@ class QWeatherWeatherRepository @Inject constructor(
         )
     }
 
+    override suspend fun fetchWeatherAlerts(
+        latitude: String,
+        longitude: String,
+    ): WeatherAlertFetchResult {
+        check(qWeatherConfig.isConfigured) {
+            "Weather API is not configured. Add api_key and api_host to local.properties."
+        }
+
+        val settings = settingsRepository.getCurrentSettings()
+        val response = weatherApiService.getWeatherAlerts(
+            latitude = latitude,
+            longitude = longitude,
+            language = settings.language.apiCode,
+        )
+        return when {
+            response.code == SUCCESS_CODE && response.warning.isNotEmpty() -> {
+                WeatherAlertFetchResult.Available(
+                    alerts = response.warning.map { alertDto -> alertDto.toDomain() },
+                )
+            }
+
+            response.code == SUCCESS_CODE || response.code == NO_ALERT_CODE -> {
+                WeatherAlertFetchResult.Empty
+            }
+
+            else -> {
+                error("Weather alert request failed with code ${response.code}.")
+            }
+        }
+    }
+
     private companion object {
         private const val SUCCESS_CODE = "200"
+        private const val NO_ALERT_CODE = "204"
     }
 }

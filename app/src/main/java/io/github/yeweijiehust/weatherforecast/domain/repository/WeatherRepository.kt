@@ -3,6 +3,7 @@ package io.github.yeweijiehust.weatherforecast.domain.repository
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import kotlinx.coroutines.flow.Flow
 
 interface WeatherRepository {
@@ -17,4 +18,9 @@ interface WeatherRepository {
     fun observeDailyForecast(cityId: String): Flow<List<DailyForecast>>
 
     suspend fun refreshDailyForecast(cityId: String)
+
+    suspend fun fetchWeatherAlerts(
+        latitude: String,
+        longitude: String,
+    ): WeatherAlertFetchResult
 }

@@ -55,6 +55,10 @@ fun WeatherDetailScreen(
                     text = localizedStringResource(R.string.detail_placeholder_body),
                     style = MaterialTheme.typography.bodyLarge,
                 )
+                AlertSection(
+                    alertCount = state.alerts.size,
+                    isUnavailable = false,
+                )
             }
 
             is WeatherDetailState.PartialContent -> {
@@ -71,6 +75,10 @@ fun WeatherDetailScreen(
                     text = state.unavailableSections.joinToString(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                AlertSection(
+                    alertCount = state.alerts.size,
+                    isUnavailable = WeatherDetailSection.Alerts in state.unavailableSections,
                 )
             }
 
@@ -93,4 +101,24 @@ fun WeatherDetailScreen(
             }
         }
     }
+}
+
+@Composable
+private fun AlertSection(
+    alertCount: Int,
+    isUnavailable: Boolean,
+) {
+    Text(
+        text = localizedStringResource(R.string.detail_alert_section_title),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    Text(
+        text = when {
+            isUnavailable -> localizedStringResource(R.string.detail_alert_unavailable)
+            alertCount > 0 -> localizedStringResource(R.string.detail_alert_count, alertCount)
+            else -> localizedStringResource(R.string.detail_alert_empty)
+        },
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }

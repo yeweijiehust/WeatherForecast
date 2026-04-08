@@ -74,6 +74,10 @@
     <string name="detail_title_for_city">Weather detail for %1$s</string>
     <string name="detail_placeholder_body">Post-MVP detail sections will be enabled step by step.</string>
     <string name="detail_partial_content">Some detail datasets are currently unavailable.</string>
+    <string name="detail_alert_section_title">Weather alerts</string>
+    <string name="detail_alert_count">%1$d active alert(s)</string>
+    <string name="detail_alert_empty">No active weather alerts.</string>
+    <string name="detail_alert_unavailable">Weather alert data is temporarily unavailable.</string>
     <string name="detail_error_no_data">Detail data is unavailable for this city right now.</string>
     <string name="detail_city_id">City ID: %1$s</string>
 

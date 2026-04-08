@@ -3,7 +3,9 @@ package io.github.yeweijiehust.weatherforecast.data.remote.api
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CurrentWeatherResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.DailyForecastResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertResponseDto
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface WeatherApiService {
@@ -27,4 +29,11 @@ interface WeatherApiService {
         @Query("lang") language: String,
         @Query("unit") unit: String,
     ): DailyForecastResponseDto
+
+    @GET("weatheralert/v1/current/{latitude}/{longitude}")
+    suspend fun getWeatherAlerts(
+        @Path("latitude") latitude: String,
+        @Path("longitude") longitude: String,
+        @Query("lang") language: String,
+    ): WeatherAlertResponseDto
 }

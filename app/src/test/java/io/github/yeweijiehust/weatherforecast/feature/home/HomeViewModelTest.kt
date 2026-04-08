@@ -8,6 +8,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveCurrentWeatherUseCase
@@ -420,5 +421,10 @@ class HomeViewModelTest {
                 throw IllegalStateException("daily-boom")
             }
         }
+
+        override suspend fun fetchWeatherAlerts(
+            latitude: String,
+            longitude: String,
+        ): WeatherAlertFetchResult = WeatherAlertFetchResult.Empty
     }
 }

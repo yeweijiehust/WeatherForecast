@@ -1,6 +1,7 @@
 package io.github.yeweijiehust.weatherforecast.feature.detail
 
 import io.github.yeweijiehust.weatherforecast.domain.model.City
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 
 data class WeatherDetailUiState(
     val state: WeatherDetailState = WeatherDetailState.Loading,
@@ -11,10 +12,12 @@ sealed interface WeatherDetailState {
 
     data class Content(
         val city: City,
+        val alerts: List<WeatherAlert> = emptyList(),
     ) : WeatherDetailState
 
     data class PartialContent(
         val city: City,
+        val alerts: List<WeatherAlert> = emptyList(),
         val unavailableSections: Set<WeatherDetailSection>,
     ) : WeatherDetailState
 

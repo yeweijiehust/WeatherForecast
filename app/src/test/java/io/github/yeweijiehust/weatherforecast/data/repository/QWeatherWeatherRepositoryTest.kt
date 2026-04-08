@@ -15,9 +15,12 @@ import io.github.yeweijiehust.weatherforecast.data.remote.dto.DailyForecastDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.DailyForecastResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertResponseDto
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.AppSettings
 import io.github.yeweijiehust.weatherforecast.domain.model.UnitSystem
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -29,6 +32,119 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class QWeatherWeatherRepositoryTest {
+    @Test
+    fun fetchWeatherAlerts_requestsUsingLatLonAndLanguage() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getWeatherAlerts(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "zh",
+            )
+        } returns WeatherAlertResponseDto(
+            code = "200",
+            warning = listOf(
+                WeatherAlertDto(
+                    id = "10102010020260408120000",
+                    sender = "Shanghai Meteorological Center",
+                    publishTime = "2026-04-08T12:00+08:00",
+                    title = "Rainstorm Blue Warning",
+                    startTime = "2026-04-08T12:00+08:00",
+                    endTime = "2026-04-08T23:00+08:00",
+                    status = "active",
+                    severity = "Blue",
+                    severityColor = "Blue",
+                    type = "rainstorm",
+                    typeName = "Rainstorm",
+                    text = "Expect heavy rain in the next 6 hours.",
+                ),
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.SimplifiedChinese,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchWeatherAlerts(latitude = "31.23", longitude = "121.47")
+
+        coVerify(exactly = 1) {
+            weatherApiService.getWeatherAlerts(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "zh",
+            )
+        }
+        assertThat(result).isInstanceOf(WeatherAlertFetchResult.Available::class.java)
+        val available = result as WeatherAlertFetchResult.Available
+        assertThat(available.alerts).hasSize(1)
+        assertThat(available.alerts.single().title).isEqualTo("Rainstorm Blue Warning")
+    }
+
+    @Test
+    fun fetchWeatherAlerts_returnsEmptyWhenNoActiveAlert() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getWeatherAlerts(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "en",
+            )
+        } returns WeatherAlertResponseDto(
+            code = "204",
+            warning = emptyList(),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchWeatherAlerts(latitude = "31.23", longitude = "121.47")
+
+        assertThat(result).isEqualTo(WeatherAlertFetchResult.Empty)
+    }
+
+    @Test
+    fun fetchWeatherAlerts_throwsWhenApiReturnsFailureCode() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getWeatherAlerts(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "en",
+            )
+        } returns WeatherAlertResponseDto(
+            code = "401",
+            warning = emptyList(),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val error = runCatching {
+            repository.fetchWeatherAlerts(latitude = "31.23", longitude = "121.47")
+        }.exceptionOrNull()
+
+        assertThat(error).isNotNull()
+        assertThat(error).isInstanceOf(IllegalStateException::class.java)
+        assertThat(error).hasMessageThat().contains("401")
+    }
+
     @Test
     fun observeCurrentWeather_usesSettingsCompatibleCache() = runTest {
         val localDataSource = FakeCurrentWeatherLocalDataSource(
