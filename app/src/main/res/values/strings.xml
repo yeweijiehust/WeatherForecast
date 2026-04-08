@@ -71,4 +71,6 @@
     <string name="snackbar_default_city_updated">Default city updated.</string>
     <string name="snackbar_city_removed">City removed.</string>
     <string name="snackbar_cache_cleared">Cached weather cleared.</string>
+    <string name="snackbar_refresh_failed">Refresh failed.</string>
+    <string name="snackbar_stale_cache_shown">Network failed. Showing cached weather.</string>
 </resources>

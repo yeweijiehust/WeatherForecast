@@ -6,6 +6,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -82,7 +83,18 @@ fun WeatherForecastApp() {
                     },
                     onSettingsClick = {
                         navController.navigate(WeatherForecastDestination.Settings.route)
-                    }
+                    },
+                    onShowMessage = { message, actionLabel, onAction ->
+                        coroutineScope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = message,
+                                actionLabel = actionLabel,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                onAction?.invoke()
+                            }
+                        }
+                    },
                 )
             }
             composable(WeatherForecastDestination.Search.route) {

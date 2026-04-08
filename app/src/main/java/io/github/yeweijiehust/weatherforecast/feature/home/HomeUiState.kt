@@ -1,5 +1,7 @@
 package io.github.yeweijiehust.weatherforecast.feature.home
 
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
@@ -42,3 +44,18 @@ data class HomeSnapshot(
     val dailyForecast: List<DailyForecast>,
     val lastUpdatedEpochMillis: Long,
 )
+
+sealed interface HomeEvent {
+    data class ShowMessage(
+        val message: UiText,
+        val action: HomeEventAction? = null,
+    ) : HomeEvent
+}
+
+enum class HomeEventAction(
+    val actionLabel: UiText,
+) {
+    RetryRefresh(
+        actionLabel = UiText.StringResource(R.string.action_retry),
+    ),
+}

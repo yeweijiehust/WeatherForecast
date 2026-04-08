@@ -36,6 +36,19 @@ class MainActivityShellTest {
     }
 
     @Test
+    fun settingsClearCache_showsSnackbarMessage() {
+        composeTestRule.onNodeWithText(existingText("Settings", "设置")).performClick()
+        composeTestRule.onNodeWithText(
+            existingText("Clear cached weather", "清除天气缓存"),
+        ).performClick()
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            hasAnyText("Cached weather cleared.", "已清除天气缓存。")
+        }
+        assertAnyDisplayed("Cached weather cleared.", "已清除天气缓存。")
+    }
+
+    @Test
     fun changingLanguage_updatesVisibleUiWithoutRestartFlow() {
         composeTestRule.onNodeWithText(existingText("Settings", "设置")).performClick()
         if (hasAnyText("管理单位、语言和缓存设置。")) {

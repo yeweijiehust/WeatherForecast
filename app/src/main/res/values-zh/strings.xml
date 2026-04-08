@@ -71,4 +71,6 @@
     <string name="snackbar_default_city_updated">默认城市已更新。</string>
     <string name="snackbar_city_removed">城市已删除。</string>
     <string name="snackbar_cache_cleared">已清除天气缓存。</string>
+    <string name="snackbar_refresh_failed">刷新失败。</string>
+    <string name="snackbar_stale_cache_shown">网络失败，当前显示缓存天气。</string>
 </resources>

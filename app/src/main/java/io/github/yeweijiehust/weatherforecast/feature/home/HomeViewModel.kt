@@ -3,6 +3,8 @@ package io.github.yeweijiehust.weatherforecast.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
@@ -18,7 +20,10 @@ import javax.inject.Inject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -37,6 +42,8 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private val _events = MutableSharedFlow<HomeEvent>()
+    val events: SharedFlow<HomeEvent> = _events.asSharedFlow()
 
     private var snapshotObservationJob: Job? = null
     private var refreshJob: Job? = null
@@ -127,9 +134,11 @@ class HomeViewModel @Inject constructor(
                             snapshot = latestSnapshotFor(city.id)!!,
                         ),
                     )
+                    emitRefreshFailedWithStaleCacheMessage()
                 }
                 !refreshOutcome.currentSuccess -> {
                     _uiState.value = HomeUiState(state = HomeState.ErrorNoCache(city))
+                    emitRefreshFailedMessage()
                 }
                 refreshOutcome.hasForecastFailureWithCachedData(
                     hadHourlyCache = hadHourlyCache,
@@ -141,6 +150,7 @@ class HomeViewModel @Inject constructor(
                             snapshot = latestSnapshotFor(city.id)!!,
                         ),
                     )
+                    emitRefreshFailedWithStaleCacheMessage()
                 }
                 else -> {
                     isStaleCache = false
@@ -148,6 +158,9 @@ class HomeViewModel @Inject constructor(
                         _uiState.value = HomeUiState(
                             state = HomeState.Content(snapshot),
                         )
+                    }
+                    if (!refreshOutcome.isAllSuccess) {
+                        emitRefreshFailedMessage()
                     }
                 }
             }
@@ -193,5 +206,26 @@ class HomeViewModel @Inject constructor(
         ): Boolean {
             return (!hourlySuccess && hadHourlyCache) || (!dailySuccess && hadDailyCache)
         }
+
+        val isAllSuccess: Boolean
+            get() = currentSuccess && hourlySuccess && dailySuccess
+    }
+
+    private suspend fun emitRefreshFailedMessage() {
+        _events.emit(
+            HomeEvent.ShowMessage(
+                message = UiText.StringResource(R.string.snackbar_refresh_failed),
+                action = HomeEventAction.RetryRefresh,
+            ),
+        )
+    }
+
+    private suspend fun emitRefreshFailedWithStaleCacheMessage() {
+        _events.emit(
+            HomeEvent.ShowMessage(
+                message = UiText.StringResource(R.string.snackbar_stale_cache_shown),
+                action = HomeEventAction.RetryRefresh,
+            ),
+        )
     }
 }

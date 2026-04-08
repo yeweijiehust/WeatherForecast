@@ -18,13 +18,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.localization.LocalWeatherForecastContext
 import io.github.yeweijiehust.weatherforecast.core.localization.localizedStringResource
+import io.github.yeweijiehust.weatherforecast.core.ui.resolve
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
@@ -41,9 +44,30 @@ import java.util.Locale
 fun HomeRoute(
     onManageCitiesClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onShowMessage: (message: String, actionLabel: String?, onAction: (() -> Unit)?) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalWeatherForecastContext.current
+
+    LaunchedEffect(viewModel, context) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is HomeEvent.ShowMessage -> {
+                    val actionLabel = event.action?.actionLabel?.resolve(context)
+                    val onAction = when (event.action) {
+                        HomeEventAction.RetryRefresh -> viewModel::onPullToRefresh
+                        null -> null
+                    }
+                    onShowMessage(
+                        event.message.resolve(context),
+                        actionLabel,
+                        onAction,
+                    )
+                }
+            }
+        }
+    }
 
     HomeScreen(
         uiState = uiState,

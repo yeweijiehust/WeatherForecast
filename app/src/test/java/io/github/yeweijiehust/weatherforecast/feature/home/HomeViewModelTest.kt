@@ -1,6 +1,9 @@
 package io.github.yeweijiehust.weatherforecast.feature.home
 
+import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
@@ -124,6 +127,35 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun event_emitsStaleCacheSnackbarWhenRefreshFailsWithCache() = runTest {
+        val defaultCity = sampleCity()
+        val repository = FakeWeatherRepository(
+            currentWeather = sampleCurrentWeather(defaultCity.id),
+            hourlyForecast = listOf(sampleHourlyForecast(defaultCity.id)),
+            dailyForecast = listOf(sampleDailyForecast(defaultCity.id)),
+        )
+        val viewModel = createViewModel(
+            defaultCity = defaultCity,
+            weatherRepository = repository,
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.events.test {
+            repository.failNextCurrentRefresh = true
+            viewModel.onPullToRefresh()
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo(
+                HomeEvent.ShowMessage(
+                    message = UiText.StringResource(R.string.snackbar_stale_cache_shown),
+                    action = HomeEventAction.RetryRefresh,
+                ),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun state_becomesContentWithStaleCacheWhenHourlyRefreshFailsWithHourlyCache() = runTest {
         val defaultCity = sampleCity()
         val repository = FakeWeatherRepository(
@@ -167,6 +199,35 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun event_emitsRefreshFailedSnackbarWhenHourlyRefreshFailsWithoutHourlyCache() = runTest {
+        val defaultCity = sampleCity()
+        val repository = FakeWeatherRepository(
+            currentWeather = sampleCurrentWeather(defaultCity.id),
+            hourlyForecast = emptyList(),
+            dailyForecast = listOf(sampleDailyForecast(defaultCity.id)),
+        )
+        val viewModel = createViewModel(
+            defaultCity = defaultCity,
+            weatherRepository = repository,
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.events.test {
+            repository.failNextHourlyRefresh = true
+            viewModel.onPullToRefresh()
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo(
+                HomeEvent.ShowMessage(
+                    message = UiText.StringResource(R.string.snackbar_refresh_failed),
+                    action = HomeEventAction.RetryRefresh,
+                ),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun state_becomesErrorWhenRefreshFailsWithoutCache() = runTest {
         val defaultCity = sampleCity()
         val repository = FakeWeatherRepository(
@@ -183,6 +244,35 @@ class HomeViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.state).isEqualTo(HomeState.ErrorNoCache(defaultCity))
+    }
+
+    @Test
+    fun event_emitsRefreshFailedSnackbarWhenRefreshFailsWithoutCache() = runTest {
+        val defaultCity = sampleCity()
+        val repository = FakeWeatherRepository(
+            currentWeather = null,
+            hourlyForecast = emptyList(),
+            dailyForecast = emptyList(),
+        )
+        val viewModel = createViewModel(
+            defaultCity = defaultCity,
+            weatherRepository = repository,
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.events.test {
+            repository.failNextCurrentRefresh = true
+            viewModel.onPullToRefresh()
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo(
+                HomeEvent.ShowMessage(
+                    message = UiText.StringResource(R.string.snackbar_refresh_failed),
+                    action = HomeEventAction.RetryRefresh,
+                ),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     private fun createViewModel(
