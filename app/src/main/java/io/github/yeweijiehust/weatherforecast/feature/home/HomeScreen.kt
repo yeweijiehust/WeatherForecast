@@ -47,7 +47,6 @@ import java.util.Locale
 @Composable
 fun HomeRoute(
     onManageCitiesClick: () -> Unit,
-    onSettingsClick: () -> Unit,
     onShowMessage: (message: String, actionLabel: String?, onAction: (() -> Unit)?) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -76,7 +75,6 @@ fun HomeRoute(
     HomeScreen(
         uiState = uiState,
         onManageCitiesClick = onManageCitiesClick,
-        onSettingsClick = onSettingsClick,
         onPullToRefresh = viewModel::onPullToRefresh,
     )
 }
@@ -86,7 +84,6 @@ fun HomeRoute(
 fun HomeScreen(
     uiState: HomeUiState,
     onManageCitiesClick: () -> Unit,
-    onSettingsClick: () -> Unit,
     onPullToRefresh: () -> Unit,
 ) {
     val isRefreshing = uiState.state is HomeState.Refreshing
@@ -136,9 +133,6 @@ fun HomeScreen(
                         onManageCitiesClick = onManageCitiesClick,
                         onRetryClick = onPullToRefresh,
                     )
-                }
-                Button(onClick = onSettingsClick) {
-                    Text(text = localizedStringResource(R.string.home_open_settings))
                 }
             }
         }
@@ -228,18 +222,22 @@ private fun ContentState(
                 }
             }
         } else {
-            CurrentWeatherHeroCard(
-                city = snapshot.city,
-                currentWeather = snapshot.currentWeather,
-            )
-            SnapshotStatusBlock(
-                lastUpdatedEpochMillis = snapshot.lastUpdatedEpochMillis,
-                isRefreshing = isRefreshing,
-                isStaleCache = isStaleCache,
-            )
-            SecondaryMetricsBlock(currentWeather = snapshot.currentWeather)
-            HourlyForecastSection(hourlyForecast = snapshot.hourlyForecast)
-            DailyForecastSection(dailyForecast = snapshot.dailyForecast)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                CurrentWeatherHeroCard(
+                    city = snapshot.city,
+                    currentWeather = snapshot.currentWeather,
+                )
+                SnapshotStatusBlock(
+                    lastUpdatedEpochMillis = snapshot.lastUpdatedEpochMillis,
+                    isRefreshing = isRefreshing,
+                    isStaleCache = isStaleCache,
+                )
+                SecondaryMetricsBlock(currentWeather = snapshot.currentWeather)
+                HourlyForecastSection(hourlyForecast = snapshot.hourlyForecast)
+                DailyForecastSection(dailyForecast = snapshot.dailyForecast)
+            }
         }
     }
     Button(onClick = onManageCitiesClick) {

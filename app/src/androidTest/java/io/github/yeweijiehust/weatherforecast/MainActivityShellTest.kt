@@ -1,7 +1,10 @@
 package io.github.yeweijiehust.weatherforecast
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -26,14 +29,14 @@ class MainActivityShellTest {
 
     @Test
     fun navigationShell_allowsMovingBetweenScreens() {
-        composeTestRule.onNodeWithText(existingText("Search Cities", "搜索城市")).performClick()
+        clickAny("Search Cities", "搜索城市")
         assertAnyDisplayed("Find a city", "查找城市")
 
-        composeTestRule.onNodeWithText(existingText("Back", "返回")).performClick()
+        clickAny("Back", "返回")
         composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) { hasAnyHomeStateText() }
         assertAnyHomeStateVisible()
 
-        composeTestRule.onNodeWithText(existingText("Settings", "设置")).performClick()
+        clickAny("Settings", "设置")
         composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
             hasAnyText(
                 "Control units, language, and cache settings.",
@@ -48,7 +51,7 @@ class MainActivityShellTest {
 
     @Test
     fun settingsClearCache_showsSnackbarMessage() {
-        composeTestRule.onNodeWithText(existingText("Settings", "设置")).performClick()
+        clickAny("Settings", "设置")
         composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
             hasAnyText(
                 "Control units, language, and cache settings.",
@@ -70,7 +73,7 @@ class MainActivityShellTest {
 
     @Test
     fun changingLanguage_updatesVisibleUiWithoutRestartFlow() {
-        composeTestRule.onNodeWithText(existingText("Settings", "设置")).performClick()
+        clickAny("Settings", "设置")
         composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
             hasAnyText(
                 "Control units, language, and cache settings.",
@@ -78,13 +81,13 @@ class MainActivityShellTest {
             )
         }
         if (hasAnyText("管理单位、语言和缓存设置。")) {
-            composeTestRule.onNodeWithText(existingText("English", "英语")).performClick()
+            clickAny("English", "英语")
             composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
                 hasAnyText("Control units, language, and cache settings.")
             }
             assertAnyDisplayed("Control units, language, and cache settings.")
         }
-        composeTestRule.onNodeWithText(existingText("Simplified Chinese", "简体中文")).performClick()
+        clickAny("Simplified Chinese", "简体中文")
         composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
             hasAnyText("管理单位、语言和缓存设置。")
         }
@@ -94,7 +97,7 @@ class MainActivityShellTest {
     }
 
     private fun assertAnyDisplayed(vararg texts: String) {
-        composeTestRule.onNodeWithText(existingText(*texts)).assertIsDisplayed()
+        composeTestRule.onAllNodesWithText(existingText(*texts)).onFirst().assertIsDisplayed()
     }
 
     private fun hasAnyText(vararg texts: String): Boolean {
@@ -133,5 +136,16 @@ class MainActivityShellTest {
         return texts.firstOrNull { text ->
             composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
         } ?: error("None of the expected texts were found: ${texts.joinToString()}")
+    }
+
+    private fun clickAny(vararg texts: String) {
+        val clickableText = texts.firstOrNull { text ->
+            composeTestRule.onAllNodes(hasText(text) and hasClickAction()).fetchSemanticsNodes().isNotEmpty()
+        }
+        if (clickableText != null) {
+            composeTestRule.onAllNodes(hasText(clickableText) and hasClickAction()).onFirst().performClick()
+            return
+        }
+        composeTestRule.onAllNodesWithText(existingText(*texts)).onFirst().performClick()
     }
 }

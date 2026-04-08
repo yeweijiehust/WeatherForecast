@@ -25,7 +25,6 @@ class HomeScreenTest {
                     HomeScreen(
                         uiState = HomeUiState(state = HomeState.EmptyNoCity),
                         onManageCitiesClick = {},
-                        onSettingsClick = {},
                         onPullToRefresh = {},
                     )
                 }
@@ -46,7 +45,6 @@ class HomeScreenTest {
                             state = HomeState.Content(snapshot = sampleSnapshot()),
                         ),
                         onManageCitiesClick = {},
-                        onSettingsClick = {},
                         onPullToRefresh = {},
                     )
                 }
@@ -76,7 +74,6 @@ class HomeScreenTest {
                             state = HomeState.Refreshing(snapshot = sampleSnapshot()),
                         ),
                         onManageCitiesClick = {},
-                        onSettingsClick = {},
                         onPullToRefresh = {},
                     )
                 }
@@ -97,7 +94,6 @@ class HomeScreenTest {
                             state = HomeState.ContentWithStaleCache(snapshot = sampleSnapshot()),
                         ),
                         onManageCitiesClick = {},
-                        onSettingsClick = {},
                         onPullToRefresh = {},
                     )
                 }
@@ -120,7 +116,6 @@ class HomeScreenTest {
                             ),
                         ),
                         onManageCitiesClick = {},
-                        onSettingsClick = {},
                         onPullToRefresh = {},
                     )
                 }

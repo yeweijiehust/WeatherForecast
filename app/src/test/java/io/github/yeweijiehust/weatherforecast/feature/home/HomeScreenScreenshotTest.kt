@@ -45,7 +45,6 @@ class HomeScreenScreenshotTest {
                     HomeScreen(
                         uiState = HomeUiState(state = state),
                         onManageCitiesClick = {},
-                        onSettingsClick = {},
                         onPullToRefresh = {},
                     )
                 }
