@@ -2,7 +2,13 @@ package io.github.yeweijiehust.weatherforecast
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -40,50 +46,56 @@ fun WeatherForecastApp() {
     val currentDestination =
         WeatherForecastDestination.fromRoute(backStackEntry?.destination?.route)
 
-    NavigationSuiteScaffold(
+    Scaffold(
         modifier = Modifier.fillMaxSize(),
-        navigationSuiteItems = {
-            WeatherForecastDestination.entries.forEach { destination ->
-                item(
-                    selected = destination == currentDestination,
-                    onClick = {
-                        navController.navigateToTopLevelDestination(destination)
-                    },
-                    icon = {
-                        Text(
-                            text = when (destination) {
-                                WeatherForecastDestination.Home -> "H"
-                                WeatherForecastDestination.Search -> "C"
-                                WeatherForecastDestination.Settings -> "S"
-                            }
-                        )
-                    },
-                    label = { Text(text = localizedStringResource(destination.titleResId)) },
-                )
-            }
-        }
-    ) {
-        Scaffold(
-            modifier = Modifier
-                .fillMaxSize(),
-            topBar = {
-                TopAppBar(
-                    title = { Text(text = localizedStringResource(currentDestination.titleResId)) },
-                    navigationIcon = {
-                        if (currentDestination != WeatherForecastDestination.Home) {
-                            TextButton(onClick = navController::navigateUp) {
-                                Text(text = localizedStringResource(R.string.action_back))
-                            }
+        topBar = {
+            TopAppBar(
+                title = { Text(text = localizedStringResource(currentDestination.titleResId)) },
+                navigationIcon = {
+                    if (currentDestination != WeatherForecastDestination.Home) {
+                        TextButton(onClick = navController::navigateUp) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                            )
+                            Text(text = localizedStringResource(R.string.action_back))
                         }
-                    },
-                )
+                    }
+                },
+            )
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+    ) { innerPadding ->
+        NavigationSuiteScaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            navigationSuiteItems = {
+                WeatherForecastDestination.entries.forEach { destination ->
+                    item(
+                        selected = destination == currentDestination,
+                        onClick = {
+                            navController.navigateToTopLevelDestination(destination)
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = when (destination) {
+                                    WeatherForecastDestination.Home -> Icons.Filled.Home
+                                    WeatherForecastDestination.Search -> Icons.Filled.Search
+                                    WeatherForecastDestination.Settings -> Icons.Filled.Settings
+                                },
+                                contentDescription = localizedStringResource(destination.titleResId),
+                            )
+                        },
+                        label = { Text(text = localizedStringResource(destination.titleResId)) },
+                    )
+                }
             },
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-        ) { innerPadding ->
+        ) {
             NavHost(
                 navController = navController,
                 startDestination = WeatherForecastDestination.Home.route,
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.fillMaxSize(),
             ) {
                 composable(WeatherForecastDestination.Home.route) {
                     HomeRoute(
