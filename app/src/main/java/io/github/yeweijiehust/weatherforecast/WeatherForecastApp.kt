@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Details
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -88,7 +89,7 @@ fun WeatherForecastApp() {
                                     WeatherForecastDestination.Home -> Icons.Filled.Home
                                     WeatherForecastDestination.Search -> Icons.Filled.Search
                                     WeatherForecastDestination.Settings -> Icons.Filled.Settings
-                                    WeatherForecastDestination.Detail -> Icons.Filled.Home
+                                    WeatherForecastDestination.Detail -> Icons.Filled.Details
                                 },
                                 contentDescription = localizedStringResource(destination.titleResId),
                             )
