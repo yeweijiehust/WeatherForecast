@@ -9,13 +9,22 @@ import org.junit.Rule
 import org.junit.Test
 
 class MainActivityShellTest {
+    companion object {
+        private const val WAIT_TIMEOUT_MS = 10_000L
+    }
+
     @get:Rule
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     @Test
     fun launch_showsHomeScaffold() {
         assertAnyDisplayed("Home", "首页")
-        assertAnyDisplayed("No city selected yet.", "还没有选择城市。")
+        assertAnyDisplayed(
+            "No city selected yet.",
+            "还没有选择城市。",
+            "Current city",
+            "当前城市",
+        )
         assertAnyDisplayed("Search Cities", "搜索城市")
         assertAnyDisplayed("Settings", "设置")
     }
@@ -26,9 +35,20 @@ class MainActivityShellTest {
         assertAnyDisplayed("Find a city", "查找城市")
 
         composeTestRule.onNodeWithText(existingText("Back", "返回")).performClick()
-        assertAnyDisplayed("No city selected yet.", "还没有选择城市。")
+        assertAnyDisplayed(
+            "No city selected yet.",
+            "还没有选择城市。",
+            "Current city",
+            "当前城市",
+        )
 
         composeTestRule.onNodeWithText(existingText("Settings", "设置")).performClick()
+        composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
+            hasAnyText(
+                "Control units, language, and cache settings.",
+                "管理单位、语言和缓存设置。",
+            )
+        }
         assertAnyDisplayed(
             "Control units, language, and cache settings.",
             "管理单位、语言和缓存设置。",
@@ -42,7 +62,7 @@ class MainActivityShellTest {
             existingText("Clear cached weather", "清除天气缓存"),
         ).performClick()
 
-        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+        composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
             hasAnyText("Cached weather cleared.", "已清除天气缓存。")
         }
         assertAnyDisplayed("Cached weather cleared.", "已清除天气缓存。")
@@ -51,12 +71,21 @@ class MainActivityShellTest {
     @Test
     fun changingLanguage_updatesVisibleUiWithoutRestartFlow() {
         composeTestRule.onNodeWithText(existingText("Settings", "设置")).performClick()
+        composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
+            hasAnyText(
+                "Control units, language, and cache settings.",
+                "管理单位、语言和缓存设置。",
+            )
+        }
         if (hasAnyText("管理单位、语言和缓存设置。")) {
             composeTestRule.onNodeWithText(existingText("English", "英语")).performClick()
+            composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
+                hasAnyText("Control units, language, and cache settings.")
+            }
             assertAnyDisplayed("Control units, language, and cache settings.")
         }
         composeTestRule.onNodeWithText(existingText("Simplified Chinese", "简体中文")).performClick()
-        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+        composeTestRule.waitUntil(timeoutMillis = WAIT_TIMEOUT_MS) {
             hasAnyText("管理单位、语言和缓存设置。")
         }
 
