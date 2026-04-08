@@ -11,6 +11,7 @@ import io.github.yeweijiehust.weatherforecast.domain.usecase.RemoveSavedCityUseC
 import io.github.yeweijiehust.weatherforecast.domain.usecase.SaveCityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.SearchCitiesUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.SetDefaultCityUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetTopCitySuggestionsUseCase
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -43,6 +44,32 @@ class CitySearchViewModelTest {
     fun initialState_isIdle() {
         val viewModel = createViewModel()
 
+        assertThat(viewModel.uiState.value.resultState).isEqualTo(CitySearchResultState.Idle)
+    }
+
+    @Test
+    fun init_loadsTopCitySuggestionsForIdleState() = runTest {
+        val suggestions = listOf(
+            City(
+                id = "101010100",
+                name = "Beijing",
+                adm1 = "Beijing",
+                adm2 = "Beijing",
+                country = "China",
+                lat = "39.90",
+                lon = "116.40",
+                timeZone = "Asia/Shanghai",
+            ),
+        )
+        val viewModel = createViewModel(
+            getTopCitySuggestionsUseCase = mockk<GetTopCitySuggestionsUseCase>().also { useCase ->
+                coEvery { useCase.invoke() } returns suggestions
+            },
+        )
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.topCitySuggestions).isEqualTo(suggestions)
         assertThat(viewModel.uiState.value.resultState).isEqualTo(CitySearchResultState.Idle)
     }
 
@@ -130,6 +157,38 @@ class CitySearchViewModelTest {
         assertThat(viewModel.uiState.value.resultState).isEqualTo(CitySearchResultState.Idle)
     }
 
+    @Test
+    fun onTopCitySuggestionSelected_setsQueryAndSearches() = runTest {
+        val result = listOf(
+            City(
+                id = "101020100",
+                name = "Shanghai",
+                adm1 = "Shanghai",
+                adm2 = "Shanghai",
+                country = "China",
+                lat = "31.23",
+                lon = "121.47",
+                timeZone = "Asia/Shanghai",
+            ),
+        )
+        val viewModel = createViewModel(
+            searchCitiesUseCase = mockk<SearchCitiesUseCase>().also { useCase ->
+                coEvery { useCase.invoke("Shanghai") } returns result
+            },
+            getTopCitySuggestionsUseCase = mockk<GetTopCitySuggestionsUseCase>().also { useCase ->
+                coEvery { useCase.invoke() } returns listOf(result.single())
+            },
+        )
+
+        viewModel.onTopCitySuggestionSelected("Shanghai")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.query).isEqualTo("Shanghai")
+        assertThat(viewModel.uiState.value.resultState).isEqualTo(
+            CitySearchResultState.Results(cities = result),
+        )
+    }
+
     private fun createViewModel(
         searchCitiesUseCase: SearchCitiesUseCase = mockk<SearchCitiesUseCase>().also { useCase ->
             coEvery { useCase.invoke(any()) } returns emptyList()
@@ -137,9 +196,13 @@ class CitySearchViewModelTest {
         observeSavedCitiesUseCase: ObserveSavedCitiesUseCase = mockk<ObserveSavedCitiesUseCase>().also { useCase ->
             every { useCase.invoke() } returns MutableStateFlow(emptyList())
         },
+        getTopCitySuggestionsUseCase: GetTopCitySuggestionsUseCase = mockk<GetTopCitySuggestionsUseCase>().also { useCase ->
+            coEvery { useCase.invoke() } returns emptyList()
+        },
     ): CitySearchViewModel {
         return CitySearchViewModel(
             searchCitiesUseCase = searchCitiesUseCase,
+            getTopCitySuggestionsUseCase = getTopCitySuggestionsUseCase,
             observeSavedCitiesUseCase = observeSavedCitiesUseCase,
             saveCityUseCase = mockk<SaveCityUseCase>().also { useCase ->
                 coEvery { useCase.invoke(any()) } returns SaveCityResult.Saved

@@ -10,6 +10,11 @@ interface CityRepository {
         language: String,
     ): List<City>
 
+    suspend fun fetchTopCities(
+        language: String,
+        number: Int = 10,
+    ): List<City>
+
     fun observeSavedCities(): Flow<List<City>>
 
     fun observeDefaultCity(): Flow<City?>

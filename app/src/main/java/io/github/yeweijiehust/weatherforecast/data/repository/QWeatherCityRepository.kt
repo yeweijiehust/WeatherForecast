@@ -41,6 +41,26 @@ class QWeatherCityRepository @Inject constructor(
         return response.location.map { it.toRemoteDomain() }
     }
 
+    override suspend fun fetchTopCities(
+        language: String,
+        number: Int,
+    ): List<City> {
+        check(qWeatherConfig.isConfigured) {
+            "Weather API is not configured. Add api_key and api_host to local.properties."
+        }
+
+        val response = geoApiService.topCities(
+            language = language,
+            number = number,
+        )
+
+        check(response.code == SUCCESS_CODE) {
+            "Top city fetch failed with code ${response.code}."
+        }
+
+        return response.topCityList.map { it.toRemoteDomain() }
+    }
+
     override fun observeSavedCities(): Flow<List<City>> {
         return combine(
             savedCityLocalDataSource.observeSavedCities(),

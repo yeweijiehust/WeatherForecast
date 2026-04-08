@@ -8,6 +8,7 @@ import io.github.yeweijiehust.weatherforecast.data.remote.api.GeoApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CityDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CityLookupResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.TopCityResponseDto
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -17,6 +18,91 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class QWeatherCityRepositoryTest {
+    @Test
+    fun fetchTopCities_passesExpectedParametersAndMapsCities() = runTest {
+        val service = mockk<GeoApiService>()
+        coEvery {
+            service.topCities(
+                language = "en",
+                number = 8,
+            )
+        } returns TopCityResponseDto(
+            code = "200",
+            topCityList = listOf(
+                CityDto(
+                    id = "101020100",
+                    name = "Shanghai",
+                    adm1 = "Shanghai",
+                    adm2 = "Shanghai",
+                    country = "China",
+                    lat = "31.23",
+                    lon = "121.47",
+                    tz = "Asia/Shanghai",
+                ),
+            ),
+        )
+        val repository = QWeatherCityRepository(
+            geoApiService = service,
+            qWeatherConfig = QWeatherConfig(
+                apiKey = "test-key",
+                apiHost = "example.com",
+            ),
+            savedCityLocalDataSource = EmptySavedCityLocalDataSource,
+            defaultCityPreferencesDataSource = EmptyDefaultCityPreferencesDataSource,
+        )
+
+        val cities = repository.fetchTopCities(
+            language = "en",
+            number = 8,
+        )
+
+        coVerify(exactly = 1) {
+            service.topCities(
+                language = "en",
+                number = 8,
+            )
+        }
+        assertThat(cities).hasSize(1)
+        assertThat(cities.single().id).isEqualTo("101020100")
+        assertThat(cities.single().name).isEqualTo("Shanghai")
+    }
+
+    @Test
+    fun fetchTopCities_throwsWhenApiRespondsWithFailureCode() = runTest {
+        val service = mockk<GeoApiService>()
+        coEvery {
+            service.topCities(
+                language = "en",
+                number = 10,
+            )
+        } returns TopCityResponseDto(code = "401", topCityList = emptyList())
+        val repository = QWeatherCityRepository(
+            geoApiService = service,
+            qWeatherConfig = QWeatherConfig(
+                apiKey = "test-key",
+                apiHost = "example.com",
+            ),
+            savedCityLocalDataSource = EmptySavedCityLocalDataSource,
+            defaultCityPreferencesDataSource = EmptyDefaultCityPreferencesDataSource,
+        )
+
+        val error = runCatching {
+            repository.fetchTopCities(
+                language = "en",
+                number = 10,
+            )
+        }.exceptionOrNull()
+
+        assertThat(error).isNotNull()
+        assertThat(error).hasMessageThat().contains("401")
+        coVerify(exactly = 1) {
+            service.topCities(
+                language = "en",
+                number = 10,
+            )
+        }
+    }
+
     @Test
     fun searchCities_passesExpectedParametersAndMapsCities() = runTest {
         val service = mockk<GeoApiService>()

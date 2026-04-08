@@ -54,6 +54,7 @@ class CitySearchScreenTest {
                         onSearch = {},
                         onRetry = {},
                         onSaveCity = {},
+                        onUseTopCitySuggestion = {},
                         onSetDefaultCity = {},
                         onRemoveCity = {},
                     )
@@ -118,9 +119,37 @@ class CitySearchScreenTest {
         assertEquals("101020100", savedCityId)
     }
 
+    @Test
+    fun idleSuggestions_clickingSuggestionInvokesSuggestionCallback() {
+        var selectedSuggestion: String? = null
+        composeTestRule.renderSearchScreen(
+            uiState = CitySearchUiState(
+                topCitySuggestions = listOf(
+                    City(
+                        id = "101020100",
+                        name = "Shanghai",
+                        adm1 = "Shanghai",
+                        adm2 = "Shanghai",
+                        country = "China",
+                        lat = "31.23",
+                        lon = "121.47",
+                        timeZone = "Asia/Shanghai",
+                    ),
+                ),
+            ),
+            onUseTopCitySuggestion = { selectedSuggestion = it },
+        )
+
+        composeTestRule.onNodeWithText("Popular cities").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Shanghai").performClick()
+
+        assertEquals("Shanghai", selectedSuggestion)
+    }
+
     private fun ComposeContentTestRule.renderSearchScreen(
         uiState: CitySearchUiState,
         onSaveCity: (City) -> Unit = {},
+        onUseTopCitySuggestion: (String) -> Unit = {},
     ) {
         setContent {
             WeatherForecastLocalizedContent(language = AppLanguage.English) {
@@ -131,6 +160,7 @@ class CitySearchScreenTest {
                         onSearch = {},
                         onRetry = {},
                         onSaveCity = onSaveCity,
+                        onUseTopCitySuggestion = onUseTopCitySuggestion,
                         onSetDefaultCity = {},
                         onRemoveCity = {},
                     )

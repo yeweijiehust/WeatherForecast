@@ -11,6 +11,7 @@ import io.github.yeweijiehust.weatherforecast.domain.usecase.RemoveSavedCityUseC
 import io.github.yeweijiehust.weatherforecast.domain.usecase.SaveCityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.SearchCitiesUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.SetDefaultCityUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetTopCitySuggestionsUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -143,8 +144,12 @@ class CitySearchManagementViewModelTest {
         val observeSavedCitiesUseCase = mockk<ObserveSavedCitiesUseCase>().also {
             every { it.invoke() } returns savedCitiesFlow
         }
+        val getTopCitySuggestionsUseCase = mockk<GetTopCitySuggestionsUseCase>().also {
+            coEvery { it.invoke() } returns emptyList()
+        }
         return CitySearchViewModel(
             searchCitiesUseCase = searchCitiesUseCase,
+            getTopCitySuggestionsUseCase = getTopCitySuggestionsUseCase,
             observeSavedCitiesUseCase = observeSavedCitiesUseCase,
             saveCityUseCase = saveCityUseCase,
             setDefaultCityUseCase = setDefaultCityUseCase,

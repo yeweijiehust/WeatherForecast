@@ -7,6 +7,7 @@ data class CitySearchUiState(
     val query: String = "",
     val resultState: CitySearchResultState = CitySearchResultState.Idle,
     val savedCities: List<City> = emptyList(),
+    val topCitySuggestions: List<City> = emptyList(),
 )
 
 sealed interface CitySearchResultState {

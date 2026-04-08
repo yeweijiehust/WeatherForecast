@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,6 +56,7 @@ fun CitySearchRoute(
         onSearch = viewModel::search,
         onRetry = viewModel::retry,
         onSaveCity = viewModel::saveCity,
+        onUseTopCitySuggestion = viewModel::onTopCitySuggestionSelected,
         onSetDefaultCity = viewModel::setDefaultCity,
         onRemoveCity = viewModel::removeCity,
     )
@@ -67,6 +69,7 @@ fun CitySearchScreen(
     onSearch: () -> Unit,
     onRetry: () -> Unit,
     onSaveCity: (City) -> Unit,
+    onUseTopCitySuggestion: (String) -> Unit,
     onSetDefaultCity: (String) -> Unit,
     onRemoveCity: (String) -> Unit,
 ) {
@@ -114,7 +117,10 @@ fun CitySearchScreen(
         HorizontalDivider()
 
         when (val resultState = uiState.resultState) {
-            CitySearchResultState.Idle -> IdleState()
+            CitySearchResultState.Idle -> IdleState(
+                topCitySuggestions = uiState.topCitySuggestions,
+                onUseTopCitySuggestion = onUseTopCitySuggestion,
+            )
             CitySearchResultState.Searching -> SearchingState()
             is CitySearchResultState.Results -> ResultsState(
                 cities = resultState.cities,
@@ -137,7 +143,10 @@ fun CitySearchScreen(
 }
 
 @Composable
-private fun IdleState() {
+private fun IdleState(
+    topCitySuggestions: List<City>,
+    onUseTopCitySuggestion: (String) -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -151,6 +160,30 @@ private fun IdleState() {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (topCitySuggestions.isNotEmpty()) {
+            Text(
+                text = localizedStringResource(R.string.search_suggestions_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = localizedStringResource(R.string.search_suggestions_support),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(
+                    items = topCitySuggestions,
+                    key = City::id,
+                ) { city ->
+                    FilledTonalButton(onClick = { onUseTopCitySuggestion(city.name) }) {
+                        Text(text = city.name)
+                    }
+                }
+            }
+        }
     }
 }
 

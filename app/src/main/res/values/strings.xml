@@ -47,6 +47,8 @@
     <string name="search_field_placeholder">Search for a city</string>
     <string name="search_idle_body">Type a city name to start searching.</string>
     <string name="search_idle_support">Results will show city, region, country, and time zone when available.</string>
+    <string name="search_suggestions_title">Popular cities</string>
+    <string name="search_suggestions_support">Tap a suggestion to search instantly.</string>
     <string name="search_loading">Searching cities…</string>
     <string name="search_time_zone">Time zone: %1$s</string>
     <string name="search_empty_result">No cities found for “%1$s”.</string>

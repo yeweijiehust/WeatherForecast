@@ -47,6 +47,8 @@
     <string name="search_field_placeholder">搜索城市</string>
     <string name="search_idle_body">输入城市名称开始搜索。</string>
     <string name="search_idle_support">结果会在可用时显示城市、地区、国家和时区。</string>
+    <string name="search_suggestions_title">热门城市</string>
+    <string name="search_suggestions_support">点击建议可立即搜索。</string>
     <string name="search_loading">正在搜索城市…</string>
     <string name="search_time_zone">时区：%1$s</string>
     <string name="search_empty_result">未找到“%1$s”相关城市。</string>

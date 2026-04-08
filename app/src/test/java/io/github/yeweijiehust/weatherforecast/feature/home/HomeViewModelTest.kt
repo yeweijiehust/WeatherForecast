@@ -365,6 +365,8 @@ class HomeViewModelTest {
 
         override suspend fun searchCities(query: String, language: String): List<City> = emptyList()
 
+        override suspend fun fetchTopCities(language: String, number: Int): List<City> = emptyList()
+
         override fun observeSavedCities(): Flow<List<City>> = MutableStateFlow(emptyList())
 
         override fun observeDefaultCity(): Flow<City?> = defaultCityFlow

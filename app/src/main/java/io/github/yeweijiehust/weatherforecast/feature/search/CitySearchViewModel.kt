@@ -7,6 +7,7 @@ import io.github.yeweijiehust.weatherforecast.R
 import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.SaveCityResult
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetTopCitySuggestionsUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveSavedCitiesUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.RemoveSavedCityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.SaveCityUseCase
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class CitySearchViewModel @Inject constructor(
     private val searchCitiesUseCase: SearchCitiesUseCase,
+    private val getTopCitySuggestionsUseCase: GetTopCitySuggestionsUseCase,
     private val observeSavedCitiesUseCase: ObserveSavedCitiesUseCase,
     private val saveCityUseCase: SaveCityUseCase,
     private val setDefaultCityUseCase: SetDefaultCityUseCase,
@@ -47,6 +49,7 @@ class CitySearchViewModel @Inject constructor(
                 }
             }
         }
+        loadTopCitySuggestionsIfNeeded()
     }
 
     fun onQueryChanged(query: String) {
@@ -57,12 +60,16 @@ class CitySearchViewModel @Inject constructor(
                 resultState = CitySearchResultState.Idle,
             )
         }
+        if (query.isBlank()) {
+            loadTopCitySuggestionsIfNeeded()
+        }
     }
 
     fun search() {
         val query = _uiState.value.query.trim()
         if (query.isBlank()) {
             _uiState.update { it.copy(resultState = CitySearchResultState.Idle) }
+            loadTopCitySuggestionsIfNeeded()
             return
         }
 
@@ -102,6 +109,11 @@ class CitySearchViewModel @Inject constructor(
         search()
     }
 
+    fun onTopCitySuggestionSelected(cityName: String) {
+        onQueryChanged(cityName)
+        search()
+    }
+
     fun saveCity(city: City) {
         viewModelScope.launch {
             val result = saveCityUseCase(city)
@@ -132,6 +144,22 @@ class CitySearchViewModel @Inject constructor(
                     UiText.StringResource(R.string.snackbar_city_removed),
                 ),
             )
+        }
+    }
+
+    private fun loadTopCitySuggestionsIfNeeded() {
+        if (_uiState.value.topCitySuggestions.isNotEmpty()) return
+
+        viewModelScope.launch {
+            val suggestions = runCatching { getTopCitySuggestionsUseCase() }
+                .getOrDefault(emptyList())
+            _uiState.update { state ->
+                if (state.topCitySuggestions == suggestions) {
+                    state
+                } else {
+                    state.copy(topCitySuggestions = suggestions)
+                }
+            }
         }
     }
 }
