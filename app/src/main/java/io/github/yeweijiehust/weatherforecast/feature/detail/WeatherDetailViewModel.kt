@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.yeweijiehust.weatherforecast.core.navigation.WeatherForecastDestination
+import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetAirQualityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherAlertsUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveSavedCitiesUseCase
 import javax.inject.Inject
@@ -20,6 +23,7 @@ class WeatherDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeSavedCitiesUseCase: ObserveSavedCitiesUseCase,
     private val getWeatherAlertsUseCase: GetWeatherAlertsUseCase,
+    private val getAirQualityUseCase: GetAirQualityUseCase,
 ) : ViewModel() {
     private val cityId = savedStateHandle.get<String>(WeatherForecastDestination.CITY_ID_ARG).orEmpty()
 
@@ -36,40 +40,62 @@ class WeatherDetailViewModel @Inject constructor(
                     _uiState.value = when (city) {
                         null -> WeatherDetailUiState(state = WeatherDetailState.ErrorNoData(cityId = cityId))
                         else -> {
+                            val unavailableSections = mutableSetOf<WeatherDetailSection>()
+
                             val alertState = runCatching {
                                 getWeatherAlertsUseCase(
                                     latitude = city.lat,
                                     longitude = city.lon,
                                 )
                             }.getOrElse {
-                                _uiState.value = WeatherDetailUiState(
-                                    state = WeatherDetailState.PartialContent(
-                                        city = city,
-                                        alerts = emptyList(),
-                                        unavailableSections = setOf(WeatherDetailSection.Alerts),
-                                    ),
-                                )
-                                return@collectLatest
+                                unavailableSections += WeatherDetailSection.Alerts
+                                WeatherAlertFetchResult.Empty
                             }
 
-                            when (alertState) {
-                                is WeatherAlertFetchResult.Available -> {
-                                    WeatherDetailUiState(
-                                        state = WeatherDetailState.Content(
-                                            city = city,
-                                            alerts = alertState.alerts,
-                                        ),
-                                    )
-                                }
+                            val airQualityState = runCatching {
+                                getAirQualityUseCase(
+                                    latitude = city.lat,
+                                    longitude = city.lon,
+                                )
+                            }.getOrElse {
+                                unavailableSections += WeatherDetailSection.AirQuality
+                                AirQualityFetchResult.Failure(reason = AirQualityFailureReason.Unknown)
+                            }
 
-                                WeatherAlertFetchResult.Empty -> {
-                                    WeatherDetailUiState(
-                                        state = WeatherDetailState.Content(
-                                            city = city,
-                                            alerts = emptyList(),
-                                        ),
-                                    )
+                            val alerts = when (alertState) {
+                                is WeatherAlertFetchResult.Available -> alertState.alerts
+                                WeatherAlertFetchResult.Empty -> emptyList()
+                            }
+                            val airQuality = when (airQualityState) {
+                                is AirQualityFetchResult.Available -> airQualityState.airQuality
+                                AirQualityFetchResult.UnsupportedRegion -> null
+                                is AirQualityFetchResult.Failure -> {
+                                    unavailableSections += WeatherDetailSection.AirQuality
+                                    null
                                 }
+                            }
+                            val isAirQualityUnsupported =
+                                airQualityState is AirQualityFetchResult.UnsupportedRegion
+
+                            if (unavailableSections.isEmpty()) {
+                                WeatherDetailUiState(
+                                    state = WeatherDetailState.Content(
+                                        city = city,
+                                        alerts = alerts,
+                                        airQuality = airQuality,
+                                        isAirQualityUnsupported = isAirQualityUnsupported,
+                                    ),
+                                )
+                            } else {
+                                WeatherDetailUiState(
+                                    state = WeatherDetailState.PartialContent(
+                                        city = city,
+                                        alerts = alerts,
+                                        airQuality = airQuality,
+                                        isAirQualityUnsupported = isAirQualityUnsupported,
+                                        unavailableSections = unavailableSections.toSet(),
+                                    ),
+                                )
                             }
                         }
                     }

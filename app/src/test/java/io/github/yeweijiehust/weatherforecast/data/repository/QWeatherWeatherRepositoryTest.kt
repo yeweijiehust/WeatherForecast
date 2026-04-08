@@ -13,10 +13,14 @@ import io.github.yeweijiehust.weatherforecast.data.remote.dto.CurrentWeatherDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CurrentWeatherResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.DailyForecastDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.DailyForecastResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityCurrentDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertResponseDto
+import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.AppSettings
 import io.github.yeweijiehust.weatherforecast.domain.model.UnitSystem
@@ -25,6 +29,7 @@ import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsReposito
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import java.net.SocketTimeoutException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -32,6 +37,164 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class QWeatherWeatherRepositoryTest {
+    @Test
+    fun fetchAirQuality_requestsUsingLatLonAndLanguage() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getAirQuality(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "zh",
+            )
+        } returns AirQualityResponseDto(
+            code = "200",
+            now = AirQualityCurrentDto(
+                publishTime = "2026-04-08T14:00+08:00",
+                aqi = "86",
+                category = "Moderate",
+                primary = "pm2p5",
+                pm2p5 = "65",
+                pm10 = "72",
+                no2 = "18",
+                so2 = "5",
+                co = "0.7",
+                o3 = "45",
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.SimplifiedChinese,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchAirQuality(latitude = "31.23", longitude = "121.47")
+
+        coVerify(exactly = 1) {
+            weatherApiService.getAirQuality(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "zh",
+            )
+        }
+        assertThat(result).isInstanceOf(AirQualityFetchResult.Available::class.java)
+        val available = result as AirQualityFetchResult.Available
+        assertThat(available.airQuality.aqi).isEqualTo("86")
+        assertThat(available.airQuality.category).isEqualTo("Moderate")
+    }
+
+    @Test
+    fun fetchAirQuality_returnsUnsupportedRegionFor204() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getAirQuality(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "en",
+            )
+        } returns AirQualityResponseDto(
+            code = "204",
+            now = null,
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchAirQuality(latitude = "31.23", longitude = "121.47")
+
+        assertThat(result).isEqualTo(AirQualityFetchResult.UnsupportedRegion)
+    }
+
+    @Test
+    fun fetchAirQuality_mapsUnauthorizedCodeToFailure() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getAirQuality(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "en",
+            )
+        } returns AirQualityResponseDto(code = "401", now = null)
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchAirQuality(latitude = "31.23", longitude = "121.47")
+
+        assertThat(result).isEqualTo(
+            AirQualityFetchResult.Failure(reason = AirQualityFailureReason.Unauthorized),
+        )
+    }
+
+    @Test
+    fun fetchAirQuality_mapsQuotaCodeToFailure() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getAirQuality(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "en",
+            )
+        } returns AirQualityResponseDto(code = "402", now = null)
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchAirQuality(latitude = "31.23", longitude = "121.47")
+
+        assertThat(result).isEqualTo(
+            AirQualityFetchResult.Failure(reason = AirQualityFailureReason.QuotaExceeded),
+        )
+    }
+
+    @Test
+    fun fetchAirQuality_mapsTimeoutToFailure() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getAirQuality(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "en",
+            )
+        } throws SocketTimeoutException("timeout")
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchAirQuality(latitude = "31.23", longitude = "121.47")
+
+        assertThat(result).isEqualTo(
+            AirQualityFetchResult.Failure(reason = AirQualityFailureReason.Timeout),
+        )
+    }
+
     @Test
     fun fetchWeatherAlerts_requestsUsingLatLonAndLanguage() = runTest {
         val weatherApiService = mockk<WeatherApiService>()

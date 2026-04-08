@@ -59,6 +59,12 @@ fun WeatherDetailScreen(
                     alertCount = state.alerts.size,
                     isUnavailable = false,
                 )
+                AirQualitySection(
+                    aqi = state.airQuality?.aqi,
+                    category = state.airQuality?.category,
+                    isUnsupported = state.isAirQualityUnsupported,
+                    isUnavailable = false,
+                )
             }
 
             is WeatherDetailState.PartialContent -> {
@@ -79,6 +85,12 @@ fun WeatherDetailScreen(
                 AlertSection(
                     alertCount = state.alerts.size,
                     isUnavailable = WeatherDetailSection.Alerts in state.unavailableSections,
+                )
+                AirQualitySection(
+                    aqi = state.airQuality?.aqi,
+                    category = state.airQuality?.category,
+                    isUnsupported = state.isAirQualityUnsupported,
+                    isUnavailable = WeatherDetailSection.AirQuality in state.unavailableSections,
                 )
             }
 
@@ -117,6 +129,33 @@ private fun AlertSection(
             isUnavailable -> localizedStringResource(R.string.detail_alert_unavailable)
             alertCount > 0 -> localizedStringResource(R.string.detail_alert_count, alertCount)
             else -> localizedStringResource(R.string.detail_alert_empty)
+        },
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun AirQualitySection(
+    aqi: String?,
+    category: String?,
+    isUnsupported: Boolean,
+    isUnavailable: Boolean,
+) {
+    Text(
+        text = localizedStringResource(R.string.detail_aqi_section_title),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    Text(
+        text = when {
+            isUnavailable -> localizedStringResource(R.string.detail_aqi_unavailable)
+            isUnsupported -> localizedStringResource(R.string.detail_aqi_unsupported_region)
+            !aqi.isNullOrBlank() -> localizedStringResource(
+                R.string.detail_aqi_value,
+                aqi,
+                category.orEmpty().ifBlank { "--" },
+            )
+            else -> localizedStringResource(R.string.detail_aqi_empty)
         },
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,

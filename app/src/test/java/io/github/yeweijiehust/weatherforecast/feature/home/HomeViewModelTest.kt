@@ -8,6 +8,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
@@ -426,5 +427,10 @@ class HomeViewModelTest {
             latitude: String,
             longitude: String,
         ): WeatherAlertFetchResult = WeatherAlertFetchResult.Empty
+
+        override suspend fun fetchAirQuality(
+            latitude: String,
+            longitude: String,
+        ): AirQualityFetchResult = AirQualityFetchResult.UnsupportedRegion
     }
 }

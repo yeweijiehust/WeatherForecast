@@ -8,12 +8,15 @@ import io.github.yeweijiehust.weatherforecast.data.remote.api.WeatherApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import io.github.yeweijiehust.weatherforecast.data.remote.mapper.toDomain
 import io.github.yeweijiehust.weatherforecast.data.remote.mapper.toLocalModel
+import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
+import java.net.SocketTimeoutException
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -173,7 +176,7 @@ class QWeatherWeatherRepository @Inject constructor(
                 )
             }
 
-            response.code == SUCCESS_CODE || response.code == NO_ALERT_CODE -> {
+            response.code == SUCCESS_CODE || response.code == NO_DATA_CODE -> {
                 WeatherAlertFetchResult.Empty
             }
 
@@ -183,8 +186,51 @@ class QWeatherWeatherRepository @Inject constructor(
         }
     }
 
+    override suspend fun fetchAirQuality(
+        latitude: String,
+        longitude: String,
+    ): AirQualityFetchResult {
+        check(qWeatherConfig.isConfigured) {
+            "Weather API is not configured. Add api_key and api_host to local.properties."
+        }
+
+        val settings = settingsRepository.getCurrentSettings()
+        return try {
+            val response = weatherApiService.getAirQuality(
+                latitude = latitude,
+                longitude = longitude,
+                language = settings.language.apiCode,
+            )
+            when {
+                response.code == SUCCESS_CODE && response.now != null -> {
+                    AirQualityFetchResult.Available(response.now.toDomain())
+                }
+
+                response.code == NO_DATA_CODE -> {
+                    AirQualityFetchResult.UnsupportedRegion
+                }
+
+                response.code == UNAUTHORIZED_CODE -> {
+                    AirQualityFetchResult.Failure(AirQualityFailureReason.Unauthorized)
+                }
+
+                response.code == QUOTA_EXCEEDED_CODE -> {
+                    AirQualityFetchResult.Failure(AirQualityFailureReason.QuotaExceeded)
+                }
+
+                else -> {
+                    AirQualityFetchResult.Failure(AirQualityFailureReason.Unknown)
+                }
+            }
+        } catch (_: SocketTimeoutException) {
+            AirQualityFetchResult.Failure(AirQualityFailureReason.Timeout)
+        }
+    }
+
     private companion object {
         private const val SUCCESS_CODE = "200"
-        private const val NO_ALERT_CODE = "204"
+        private const val NO_DATA_CODE = "204"
+        private const val UNAUTHORIZED_CODE = "401"
+        private const val QUOTA_EXCEEDED_CODE = "402"
     }
 }
