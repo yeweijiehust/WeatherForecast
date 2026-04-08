@@ -1,5 +1,6 @@
 package io.github.yeweijiehust.weatherforecast.feature.settings
 
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.AppSettings
 
 data class SettingsUiState(
@@ -8,6 +9,6 @@ data class SettingsUiState(
 
 sealed interface SettingsEvent {
     data class ShowMessage(
-        val message: String,
+        val message: UiText,
     ) : SettingsEvent
 }

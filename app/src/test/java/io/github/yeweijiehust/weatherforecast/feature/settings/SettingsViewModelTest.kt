@@ -2,6 +2,8 @@ package io.github.yeweijiehust.weatherforecast.feature.settings
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.AppSettings
 import io.github.yeweijiehust.weatherforecast.domain.model.UnitSystem
@@ -84,7 +86,9 @@ class SettingsViewModelTest {
             dispatcher.scheduler.advanceUntilIdle()
 
             coVerify(exactly = 1) { clearWeatherCacheUseCase.invoke() }
-            assertThat(awaitItem()).isEqualTo(SettingsEvent.ShowMessage("Cached weather cleared."))
+            assertThat(awaitItem()).isEqualTo(
+                SettingsEvent.ShowMessage(UiText.StringResource(R.string.snackbar_cache_cleared)),
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }

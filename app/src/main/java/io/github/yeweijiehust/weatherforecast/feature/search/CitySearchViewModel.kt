@@ -3,6 +3,8 @@ package io.github.yeweijiehust.weatherforecast.feature.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.SaveCityResult
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveSavedCitiesUseCase
@@ -88,7 +90,7 @@ class CitySearchViewModel @Inject constructor(
                     it.copy(
                         resultState = CitySearchResultState.Error(
                             query = query,
-                            message = SEARCH_ERROR_MESSAGE,
+                            message = UiText.StringResource(R.string.search_error_generic),
                         ),
                     )
                 }
@@ -104,8 +106,8 @@ class CitySearchViewModel @Inject constructor(
         viewModelScope.launch {
             val result = saveCityUseCase(city)
             val message = when (result) {
-                SaveCityResult.Saved -> "City saved."
-                SaveCityResult.Duplicate -> "City already saved."
+                SaveCityResult.Saved -> UiText.StringResource(R.string.snackbar_city_saved)
+                SaveCityResult.Duplicate -> UiText.StringResource(R.string.snackbar_city_already_saved)
             }
             _events.emit(CitySearchEvent.ShowMessage(message))
         }
@@ -114,19 +116,22 @@ class CitySearchViewModel @Inject constructor(
     fun setDefaultCity(cityId: String) {
         viewModelScope.launch {
             setDefaultCityUseCase(cityId)
-            _events.emit(CitySearchEvent.ShowMessage("Default city updated."))
+            _events.emit(
+                CitySearchEvent.ShowMessage(
+                    UiText.StringResource(R.string.snackbar_default_city_updated),
+                ),
+            )
         }
     }
 
     fun removeCity(cityId: String) {
         viewModelScope.launch {
             removeSavedCityUseCase(cityId)
-            _events.emit(CitySearchEvent.ShowMessage("City removed."))
+            _events.emit(
+                CitySearchEvent.ShowMessage(
+                    UiText.StringResource(R.string.snackbar_city_removed),
+                ),
+            )
         }
-    }
-
-    private companion object {
-        private const val SEARCH_ERROR_MESSAGE =
-            "We couldn't search right now. Check the connection and try again."
     }
 }

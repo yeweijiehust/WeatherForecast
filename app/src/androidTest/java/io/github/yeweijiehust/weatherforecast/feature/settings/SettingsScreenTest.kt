@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import io.github.yeweijiehust.weatherforecast.core.localization.WeatherForecastLocalizedContent
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.AppSettings
 import io.github.yeweijiehust.weatherforecast.domain.model.UnitSystem
@@ -19,18 +20,20 @@ class SettingsScreenTest {
     @Test
     fun screen_rendersSettingsSections() {
         composeTestRule.setContent {
-            WeatherForecastTheme {
-                SettingsScreen(
-                    uiState = SettingsUiState(
-                        settings = AppSettings(
-                            language = AppLanguage.English,
-                            unitSystem = UnitSystem.Metric,
+            WeatherForecastLocalizedContent(language = AppLanguage.English) {
+                WeatherForecastTheme {
+                    SettingsScreen(
+                        uiState = SettingsUiState(
+                            settings = AppSettings(
+                                language = AppLanguage.English,
+                                unitSystem = UnitSystem.Metric,
+                            ),
                         ),
-                    ),
-                    onSelectLanguage = {},
-                    onSelectUnitSystem = {},
-                    onClearWeatherCache = {},
-                )
+                        onSelectLanguage = {},
+                        onSelectUnitSystem = {},
+                        onClearWeatherCache = {},
+                    )
+                }
             }
         }
 
@@ -44,18 +47,46 @@ class SettingsScreenTest {
     fun clearCacheButton_invokesCallback() {
         var clearInvoked = false
         composeTestRule.setContent {
-            WeatherForecastTheme {
-                SettingsScreen(
-                    uiState = SettingsUiState(settings = AppSettings()),
-                    onSelectLanguage = {},
-                    onSelectUnitSystem = {},
-                    onClearWeatherCache = { clearInvoked = true },
-                )
+            WeatherForecastLocalizedContent(language = AppLanguage.English) {
+                WeatherForecastTheme {
+                    SettingsScreen(
+                        uiState = SettingsUiState(settings = AppSettings()),
+                        onSelectLanguage = {},
+                        onSelectUnitSystem = {},
+                        onClearWeatherCache = { clearInvoked = true },
+                    )
+                }
             }
         }
 
         composeTestRule.onNodeWithText("Clear cached weather").performClick()
 
         assertTrue(clearInvoked)
+    }
+
+    @Test
+    fun screen_usesSelectedLanguageForLabels() {
+        composeTestRule.setContent {
+            WeatherForecastLocalizedContent(language = AppLanguage.SimplifiedChinese) {
+                WeatherForecastTheme {
+                    SettingsScreen(
+                        uiState = SettingsUiState(
+                            settings = AppSettings(
+                                language = AppLanguage.SimplifiedChinese,
+                                unitSystem = UnitSystem.Metric,
+                            ),
+                        ),
+                        onSelectLanguage = {},
+                        onSelectUnitSystem = {},
+                        onClearWeatherCache = {},
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("设置").assertIsDisplayed()
+        composeTestRule.onNodeWithText("单位").assertIsDisplayed()
+        composeTestRule.onNodeWithText("简体中文").assertIsDisplayed()
+        composeTestRule.onNodeWithText("清除天气缓存").assertIsDisplayed()
     }
 }

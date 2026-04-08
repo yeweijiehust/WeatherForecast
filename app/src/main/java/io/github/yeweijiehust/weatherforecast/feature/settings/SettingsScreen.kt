@@ -19,6 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.localization.LocalWeatherForecastContext
+import io.github.yeweijiehust.weatherforecast.core.localization.localizedStringResource
+import io.github.yeweijiehust.weatherforecast.core.ui.resolve
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.UnitSystem
 
@@ -28,11 +32,12 @@ fun SettingsRoute(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalWeatherForecastContext.current
 
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(viewModel, context) {
         viewModel.events.collect { event ->
             when (event) {
-                is SettingsEvent.ShowMessage -> onShowMessage(event.message)
+                is SettingsEvent.ShowMessage -> onShowMessage(event.message.resolve(context))
             }
         }
     }
@@ -59,42 +64,42 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = "Settings",
+            text = localizedStringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Text(
-            text = "Control units, language, and cache settings.",
+            text = localizedStringResource(R.string.settings_description),
             style = MaterialTheme.typography.bodyLarge,
         )
 
-        SettingsSection(title = "Units") {
+        SettingsSection(title = localizedStringResource(R.string.settings_section_units)) {
             UnitSystem.entries.forEach { unitSystem ->
                 SettingsOptionRow(
-                    label = unitSystem.displayName,
+                    label = localizedStringResource(unitSystem.labelResId()),
                     selected = uiState.settings.unitSystem == unitSystem,
                     onClick = { onSelectUnitSystem(unitSystem) },
                 )
             }
         }
 
-        SettingsSection(title = "Language") {
+        SettingsSection(title = localizedStringResource(R.string.settings_section_language)) {
             AppLanguage.entries.forEach { language ->
                 SettingsOptionRow(
-                    label = language.displayName,
+                    label = localizedStringResource(language.labelResId()),
                     selected = uiState.settings.language == language,
                     onClick = { onSelectLanguage(language) },
                 )
             }
         }
 
-        SettingsSection(title = "Data") {
+        SettingsSection(title = localizedStringResource(R.string.settings_section_data)) {
             Text(
-                text = "Clears cached weather data only. Saved cities and settings stay intact.",
+                text = localizedStringResource(R.string.settings_data_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(onClick = onClearWeatherCache) {
-                Text(text = "Clear cached weather")
+                Text(text = localizedStringResource(R.string.settings_clear_cache))
             }
         }
     }
@@ -145,5 +150,19 @@ private fun SettingsOptionRow(
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(top = 12.dp),
         )
+    }
+}
+
+private fun AppLanguage.labelResId(): Int {
+    return when (this) {
+        AppLanguage.English -> R.string.settings_language_english
+        AppLanguage.SimplifiedChinese -> R.string.settings_language_simplified_chinese
+    }
+}
+
+private fun UnitSystem.labelResId(): Int {
+    return when (this) {
+        UnitSystem.Metric -> R.string.settings_unit_metric
+        UnitSystem.Imperial -> R.string.settings_unit_imperial
     }
 }

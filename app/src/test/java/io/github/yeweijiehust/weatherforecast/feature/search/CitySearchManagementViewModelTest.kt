@@ -2,6 +2,8 @@ package io.github.yeweijiehust.weatherforecast.feature.search
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.SaveCityResult
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveSavedCitiesUseCase
@@ -64,7 +66,11 @@ class CitySearchManagementViewModelTest {
             viewModel.saveCity(city)
             dispatcher.scheduler.advanceUntilIdle()
 
-            assertThat(awaitItem()).isEqualTo(CitySearchEvent.ShowMessage("City already saved."))
+            assertThat(awaitItem()).isEqualTo(
+                CitySearchEvent.ShowMessage(
+                    UiText.StringResource(R.string.snackbar_city_already_saved),
+                ),
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -80,7 +86,9 @@ class CitySearchManagementViewModelTest {
             viewModel.saveCity(city)
             dispatcher.scheduler.advanceUntilIdle()
 
-            assertThat(awaitItem()).isEqualTo(CitySearchEvent.ShowMessage("City saved."))
+            assertThat(awaitItem()).isEqualTo(
+                CitySearchEvent.ShowMessage(UiText.StringResource(R.string.snackbar_city_saved)),
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -95,7 +103,11 @@ class CitySearchManagementViewModelTest {
             dispatcher.scheduler.advanceUntilIdle()
 
             coVerify(exactly = 1) { setDefaultCityUseCase.invoke("101020100") }
-            assertThat(awaitItem()).isEqualTo(CitySearchEvent.ShowMessage("Default city updated."))
+            assertThat(awaitItem()).isEqualTo(
+                CitySearchEvent.ShowMessage(
+                    UiText.StringResource(R.string.snackbar_default_city_updated),
+                ),
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -110,7 +122,9 @@ class CitySearchManagementViewModelTest {
             dispatcher.scheduler.advanceUntilIdle()
 
             coVerify(exactly = 1) { removeSavedCityUseCase.invoke("101020100") }
-            assertThat(awaitItem()).isEqualTo(CitySearchEvent.ShowMessage("City removed."))
+            assertThat(awaitItem()).isEqualTo(
+                CitySearchEvent.ShowMessage(UiText.StringResource(R.string.snackbar_city_removed)),
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }

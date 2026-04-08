@@ -1,5 +1,6 @@
 package io.github.yeweijiehust.weatherforecast.feature.search
 
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 
 data class CitySearchUiState(
@@ -23,12 +24,12 @@ sealed interface CitySearchResultState {
 
     data class Error(
         val query: String,
-        val message: String,
+        val message: UiText,
     ) : CitySearchResultState
 }
 
 sealed interface CitySearchEvent {
     data class ShowMessage(
-        val message: String,
+        val message: UiText,
     ) : CitySearchEvent
 }

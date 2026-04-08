@@ -3,6 +3,8 @@ package io.github.yeweijiehust.weatherforecast.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.UnitSystem
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ClearWeatherCacheUseCase
@@ -55,7 +57,11 @@ class SettingsViewModel @Inject constructor(
     fun clearWeatherCache() {
         viewModelScope.launch {
             clearWeatherCacheUseCase()
-            _events.emit(SettingsEvent.ShowMessage("Cached weather cleared."))
+            _events.emit(
+                SettingsEvent.ShowMessage(
+                    UiText.StringResource(R.string.snackbar_cache_cleared),
+                ),
+            )
         }
     }
 }

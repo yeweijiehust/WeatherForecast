@@ -18,6 +18,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.localization.localizedStringResource
 import io.github.yeweijiehust.weatherforecast.core.navigation.WeatherForecastDestination
 import io.github.yeweijiehust.weatherforecast.feature.home.HomeRoute
 import io.github.yeweijiehust.weatherforecast.feature.search.CitySearchRoute
@@ -38,11 +40,11 @@ fun WeatherForecastApp() {
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(text = currentDestination.title) },
+                title = { Text(text = localizedStringResource(currentDestination.titleResId)) },
                 navigationIcon = {
                     if (currentDestination != WeatherForecastDestination.Home) {
                         TextButton(onClick = navController::navigateUp) {
-                            Text(text = "Back")
+                            Text(text = localizedStringResource(R.string.action_back))
                         }
                     }
                 },
@@ -53,14 +55,14 @@ fun WeatherForecastApp() {
                                 navController.navigate(WeatherForecastDestination.Search.route)
                             }
                         ) {
-                            Text(text = "Search Cities")
+                            Text(text = localizedStringResource(R.string.action_search_cities))
                         }
                         TextButton(
                             onClick = {
                                 navController.navigate(WeatherForecastDestination.Settings.route)
                             }
                         ) {
-                            Text(text = "Settings")
+                            Text(text = localizedStringResource(R.string.action_settings))
                         }
                     }
                 }

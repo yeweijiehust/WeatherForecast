@@ -5,6 +5,8 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import io.github.yeweijiehust.weatherforecast.core.localization.WeatherForecastLocalizedContent
+import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
 import org.junit.Assert.assertEquals
@@ -18,42 +20,44 @@ class CitySearchScreenTest {
     @Test
     fun resultsState_rendersDisambiguatedCities() {
         composeTestRule.setContent {
-            WeatherForecastTheme {
-                CitySearchScreen(
-                    uiState = CitySearchUiState(
-                        query = "Springfield",
-                        resultState = CitySearchResultState.Results(
-                            cities = listOf(
-                                City(
-                                    id = "1",
-                                    name = "Springfield",
-                                    adm1 = "Illinois",
-                                    adm2 = "Sangamon",
-                                    country = "United States",
-                                    lat = "39.78",
-                                    lon = "-89.64",
-                                    timeZone = "America/Chicago",
-                                ),
-                                City(
-                                    id = "2",
-                                    name = "Springfield",
-                                    adm1 = "Missouri",
-                                    adm2 = "Greene",
-                                    country = "United States",
-                                    lat = "37.21",
-                                    lon = "-93.29",
-                                    timeZone = "America/Chicago",
+            WeatherForecastLocalizedContent(language = AppLanguage.English) {
+                WeatherForecastTheme {
+                    CitySearchScreen(
+                        uiState = CitySearchUiState(
+                            query = "Springfield",
+                            resultState = CitySearchResultState.Results(
+                                cities = listOf(
+                                    City(
+                                        id = "1",
+                                        name = "Springfield",
+                                        adm1 = "Illinois",
+                                        adm2 = "Sangamon",
+                                        country = "United States",
+                                        lat = "39.78",
+                                        lon = "-89.64",
+                                        timeZone = "America/Chicago",
+                                    ),
+                                    City(
+                                        id = "2",
+                                        name = "Springfield",
+                                        adm1 = "Missouri",
+                                        adm2 = "Greene",
+                                        country = "United States",
+                                        lat = "37.21",
+                                        lon = "-93.29",
+                                        timeZone = "America/Chicago",
+                                    ),
                                 ),
                             ),
                         ),
-                    ),
-                    onQueryChanged = {},
-                    onSearch = {},
-                    onRetry = {},
-                    onSaveCity = {},
-                    onSetDefaultCity = {},
-                    onRemoveCity = {},
-                )
+                        onQueryChanged = {},
+                        onSearch = {},
+                        onRetry = {},
+                        onSaveCity = {},
+                        onSetDefaultCity = {},
+                        onRemoveCity = {},
+                    )
+                }
             }
         }
 
@@ -119,16 +123,18 @@ class CitySearchScreenTest {
         onSaveCity: (City) -> Unit = {},
     ) {
         setContent {
-            WeatherForecastTheme {
-                CitySearchScreen(
-                    uiState = uiState,
-                    onQueryChanged = {},
-                    onSearch = {},
-                    onRetry = {},
-                    onSaveCity = onSaveCity,
-                    onSetDefaultCity = {},
-                    onRemoveCity = {},
-                )
+            WeatherForecastLocalizedContent(language = AppLanguage.English) {
+                WeatherForecastTheme {
+                    CitySearchScreen(
+                        uiState = uiState,
+                        onQueryChanged = {},
+                        onSearch = {},
+                        onRetry = {},
+                        onSaveCity = onSaveCity,
+                        onSetDefaultCity = {},
+                        onRemoveCity = {},
+                    )
+                }
             }
         }
     }

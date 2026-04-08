@@ -1,12 +1,15 @@
 package io.github.yeweijiehust.weatherforecast.core.navigation
 
+import androidx.annotation.StringRes
+import io.github.yeweijiehust.weatherforecast.R
+
 enum class WeatherForecastDestination(
     val route: String,
-    val title: String,
+    @StringRes val titleResId: Int,
 ) {
-    Home(route = "home", title = "Home"),
-    Search(route = "search", title = "Search Cities"),
-    Settings(route = "settings", title = "Settings");
+    Home(route = "home", titleResId = R.string.title_home),
+    Search(route = "search", titleResId = R.string.title_search),
+    Settings(route = "settings", titleResId = R.string.title_settings);
 
     companion object {
         fun fromRoute(route: String?): WeatherForecastDestination {

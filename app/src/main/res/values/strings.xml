@@ -1,3 +1,55 @@
 <resources>
-    <string name="app_name">WeatherForecast</string>
+    <string name="app_name">Weather Forecast</string>
+    <string name="title_home">Home</string>
+    <string name="title_search">Search Cities</string>
+    <string name="title_settings">Settings</string>
+    <string name="action_back">Back</string>
+    <string name="action_search">Search</string>
+    <string name="action_search_cities">Search Cities</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_save">Save</string>
+    <string name="action_remove">Remove</string>
+    <string name="status_saved">Saved</string>
+    <string name="status_default">Default</string>
+
+    <string name="home_empty_title">No city selected yet.</string>
+    <string name="home_empty_body">Search and save a city to prepare your Home screen weather view.</string>
+    <string name="home_add_first_city">Add your first city</string>
+    <string name="home_current_city_title">Current city</string>
+    <string name="home_manage_saved_cities">Manage saved cities</string>
+    <string name="home_open_settings">Open Settings Screen</string>
+
+    <string name="search_title">Find a city</string>
+    <string name="search_description">Search by city name to see clear, disambiguated results.</string>
+    <string name="search_field_label">City name</string>
+    <string name="search_field_placeholder">Search for a city</string>
+    <string name="search_idle_body">Type a city name to start searching.</string>
+    <string name="search_idle_support">Results will show city, region, country, and time zone when available.</string>
+    <string name="search_loading">Searching cities…</string>
+    <string name="search_time_zone">Time zone: %1$s</string>
+    <string name="search_empty_result">No cities found for “%1$s”.</string>
+    <string name="search_empty_result_support">Try a broader spelling or include a larger nearby city.</string>
+    <string name="search_saved_cities">Saved cities</string>
+    <string name="search_no_saved_cities">No saved cities yet. Search for a city to get started.</string>
+    <string name="search_set_default">Set default</string>
+    <string name="search_error_generic">We couldn\'t search right now. Check the connection and try again.</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_description">Control units, language, and cache settings.</string>
+    <string name="settings_section_units">Units</string>
+    <string name="settings_section_language">Language</string>
+    <string name="settings_section_data">Data</string>
+    <string name="settings_data_hint">Clears cached weather data only. Saved cities and settings stay intact.</string>
+    <string name="settings_clear_cache">Clear cached weather</string>
+    <string name="settings_unit_metric">Metric</string>
+    <string name="settings_unit_imperial">Imperial</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_simplified_chinese">Simplified Chinese</string>
+
+    <string name="snackbar_city_saved">City saved.</string>
+    <string name="snackbar_city_already_saved">City already saved.</string>
+    <string name="snackbar_default_city_updated">Default city updated.</string>
+    <string name="snackbar_city_removed">City removed.</string>
+    <string name="snackbar_cache_cleared">Cached weather cleared.</string>
 </resources>

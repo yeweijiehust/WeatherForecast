@@ -26,6 +26,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.localization.LocalWeatherForecastContext
+import io.github.yeweijiehust.weatherforecast.core.localization.localizedStringResource
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
+import io.github.yeweijiehust.weatherforecast.core.ui.resolve
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 
 @Composable
@@ -34,11 +39,12 @@ fun CitySearchRoute(
     viewModel: CitySearchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalWeatherForecastContext.current
 
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(viewModel, context) {
         viewModel.events.collect { event ->
             when (event) {
-                is CitySearchEvent.ShowMessage -> onShowMessage(event.message)
+                is CitySearchEvent.ShowMessage -> onShowMessage(event.message.resolve(context))
             }
         }
     }
@@ -71,11 +77,11 @@ fun CitySearchScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = "Find a city",
+            text = localizedStringResource(R.string.search_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Text(
-            text = "Search by city name to see clear, disambiguated results.",
+            text = localizedStringResource(R.string.search_description),
             style = MaterialTheme.typography.bodyLarge,
         )
 
@@ -89,10 +95,10 @@ fun CitySearchScreen(
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 label = {
-                    Text(text = "City name")
+                    Text(text = localizedStringResource(R.string.search_field_label))
                 },
                 placeholder = {
-                    Text(text = "Search for a city")
+                    Text(text = localizedStringResource(R.string.search_field_placeholder))
                 },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
@@ -101,7 +107,7 @@ fun CitySearchScreen(
                 onClick = onSearch,
                 modifier = Modifier.padding(top = 8.dp),
             ) {
-                Text(text = "Search")
+                Text(text = localizedStringResource(R.string.action_search))
             }
         }
 
@@ -137,11 +143,11 @@ private fun IdleState() {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = "Type a city name to start searching.",
+            text = localizedStringResource(R.string.search_idle_body),
             style = MaterialTheme.typography.bodyLarge,
         )
         Text(
-            text = "Results will show city, region, country, and time zone when available.",
+            text = localizedStringResource(R.string.search_idle_support),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -156,7 +162,7 @@ private fun SearchingState() {
     ) {
         CircularProgressIndicator()
         Text(
-            text = "Searching cities...",
+            text = localizedStringResource(R.string.search_loading),
             style = MaterialTheme.typography.bodyLarge,
         )
     }
@@ -212,13 +218,21 @@ private fun CityResultCard(
             )
             if (city.timeZone.isNotBlank()) {
                 Text(
-                    text = "Time zone: ${city.timeZone}",
+                    text = localizedStringResource(R.string.search_time_zone, city.timeZone),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Button(onClick = { onSaveCity(city) }) {
-                Text(text = if (isSaved) "Saved" else "Save")
+                Text(
+                    text = localizedStringResource(
+                        if (isSaved) {
+                            R.string.status_saved
+                        } else {
+                            R.string.action_save
+                        },
+                    ),
+                )
             }
         }
     }
@@ -233,11 +247,11 @@ private fun EmptyResultState(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = "No cities found for \"$query\".",
+            text = localizedStringResource(R.string.search_empty_result, query),
             style = MaterialTheme.typography.bodyLarge,
         )
         Text(
-            text = "Try a broader spelling or include a larger nearby city.",
+            text = localizedStringResource(R.string.search_empty_result_support),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -246,19 +260,21 @@ private fun EmptyResultState(
 
 @Composable
 private fun ErrorState(
-    message: String,
+    message: UiText,
     onRetry: () -> Unit,
 ) {
+    val context = LocalWeatherForecastContext.current
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            text = message,
+            text = message.resolve(context),
             style = MaterialTheme.typography.bodyLarge,
         )
         Button(onClick = onRetry) {
-            Text(text = "Retry")
+            Text(text = localizedStringResource(R.string.action_retry))
         }
     }
 }
@@ -274,12 +290,12 @@ private fun SavedCitiesSection(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            text = "Saved cities",
+            text = localizedStringResource(R.string.search_saved_cities),
             style = MaterialTheme.typography.titleMedium,
         )
         if (savedCities.isEmpty()) {
             Text(
-                text = "No saved cities yet. Search for a city to get started.",
+                text = localizedStringResource(R.string.search_no_saved_cities),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -322,7 +338,7 @@ private fun SavedCityCard(
                 )
                 if (city.isDefault) {
                     Text(
-                        text = "Default",
+                        text = localizedStringResource(R.string.status_default),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -335,11 +351,11 @@ private fun SavedCityCard(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (!city.isDefault) {
                     FilledTonalButton(onClick = { onSetDefaultCity(city.id) }) {
-                        Text(text = "Set default")
+                        Text(text = localizedStringResource(R.string.search_set_default))
                     }
                 }
                 Button(onClick = { onRemoveCity(city.id) }) {
-                    Text(text = "Remove")
+                    Text(text = localizedStringResource(R.string.action_remove))
                 }
             }
         }

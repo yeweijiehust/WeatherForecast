@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.localization.localizedStringResource
 
 @Composable
 fun HomeRoute(
@@ -43,19 +45,19 @@ fun HomeScreen(
     ) {
         if (uiState.defaultCity == null) {
             Text(
-                text = "No city selected yet.",
+                text = localizedStringResource(R.string.home_empty_title),
                 style = MaterialTheme.typography.headlineSmall,
             )
             Text(
-                text = "Search and save a city to prepare your Home screen weather view.",
+                text = localizedStringResource(R.string.home_empty_body),
                 style = MaterialTheme.typography.bodyLarge,
             )
             Button(onClick = onManageCitiesClick) {
-                Text(text = "Add your first city")
+                Text(text = localizedStringResource(R.string.home_add_first_city))
             }
         } else {
             Text(
-                text = "Current city",
+                text = localizedStringResource(R.string.home_current_city_title),
                 style = MaterialTheme.typography.headlineSmall,
             )
             Text(
@@ -70,11 +72,11 @@ fun HomeScreen(
                 style = MaterialTheme.typography.bodyLarge,
             )
             Button(onClick = onManageCitiesClick) {
-                Text(text = "Manage saved cities")
+                Text(text = localizedStringResource(R.string.home_manage_saved_cities))
             }
         }
         Button(onClick = onSettingsClick) {
-            Text(text = "Open Settings Screen")
+            Text(text = localizedStringResource(R.string.home_open_settings))
         }
     }
 }

@@ -2,6 +2,8 @@ package io.github.yeweijiehust.weatherforecast.feature.search
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.SaveCityResult
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveSavedCitiesUseCase
@@ -113,7 +115,7 @@ class CitySearchViewModelTest {
             .isEqualTo(
                 CitySearchResultState.Error(
                     query = "Nanjing",
-                    message = "We couldn't search right now. Check the connection and try again.",
+                    message = UiText.StringResource(R.string.search_error_generic),
                 ),
             )
     }
