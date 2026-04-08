@@ -3,6 +3,7 @@
     <string name="title_home">首页</string>
     <string name="title_search">搜索城市</string>
     <string name="title_settings">设置</string>
+    <string name="title_detail">天气详情</string>
     <string name="action_back">返回</string>
     <string name="action_search">搜索</string>
     <string name="action_search_cities">搜索城市</string>
@@ -18,6 +19,7 @@
     <string name="home_add_first_city">添加第一个城市</string>
     <string name="home_current_city_title">当前城市</string>
     <string name="home_manage_saved_cities">管理已保存城市</string>
+    <string name="home_view_details">查看详情</string>
     <string name="home_open_settings">打开设置页面</string>
     <string name="home_loading">正在加载天气…</string>
     <string name="home_error_no_cache">暂时无法加载当前天气。</string>
@@ -65,6 +67,13 @@
     <string name="settings_unit_imperial">英制</string>
     <string name="settings_language_english">英语</string>
     <string name="settings_language_simplified_chinese">简体中文</string>
+
+    <string name="detail_loading">正在加载天气详情…</string>
+    <string name="detail_title_for_city">%1$s 的天气详情</string>
+    <string name="detail_placeholder_body">Post-MVP 详情模块将按步骤逐步启用。</string>
+    <string name="detail_partial_content">部分详情数据当前不可用。</string>
+    <string name="detail_error_no_data">当前无法获取该城市的详情数据。</string>
+    <string name="detail_city_id">城市 ID：%1$s</string>
 
     <string name="snackbar_city_saved">城市已保存。</string>
     <string name="snackbar_city_already_saved">城市已保存过。</string>

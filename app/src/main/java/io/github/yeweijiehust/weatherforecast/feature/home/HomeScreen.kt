@@ -47,6 +47,7 @@ import java.util.Locale
 @Composable
 fun HomeRoute(
     onManageCitiesClick: () -> Unit,
+    onOpenDetail: (cityId: String) -> Unit,
     onShowMessage: (message: String, actionLabel: String?, onAction: (() -> Unit)?) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -75,6 +76,7 @@ fun HomeRoute(
     HomeScreen(
         uiState = uiState,
         onManageCitiesClick = onManageCitiesClick,
+        onOpenDetail = onOpenDetail,
         onPullToRefresh = viewModel::onPullToRefresh,
     )
 }
@@ -84,6 +86,7 @@ fun HomeRoute(
 fun HomeScreen(
     uiState: HomeUiState,
     onManageCitiesClick: () -> Unit,
+    onOpenDetail: (cityId: String) -> Unit,
     onPullToRefresh: () -> Unit,
 ) {
     val isRefreshing = uiState.state is HomeState.Refreshing
@@ -115,18 +118,21 @@ fun HomeScreen(
                         isStaleCache = false,
                         isRefreshing = false,
                         onManageCitiesClick = onManageCitiesClick,
+                        onOpenDetail = onOpenDetail,
                     )
                     is HomeState.Refreshing -> ContentState(
                         snapshot = state.snapshot,
                         isStaleCache = false,
                         isRefreshing = true,
                         onManageCitiesClick = onManageCitiesClick,
+                        onOpenDetail = onOpenDetail,
                     )
                     is HomeState.ContentWithStaleCache -> ContentState(
                         snapshot = state.snapshot,
                         isStaleCache = true,
                         isRefreshing = false,
                         onManageCitiesClick = onManageCitiesClick,
+                        onOpenDetail = onOpenDetail,
                     )
                     is HomeState.ErrorNoCache -> ErrorState(
                         city = state.city,
@@ -188,6 +194,7 @@ private fun ContentState(
     isStaleCache: Boolean,
     isRefreshing: Boolean,
     onManageCitiesClick: () -> Unit,
+    onOpenDetail: (cityId: String) -> Unit,
 ) {
     BoxWithConstraints(
         modifier = Modifier.fillMaxWidth(),
@@ -240,8 +247,15 @@ private fun ContentState(
             }
         }
     }
-    Button(onClick = onManageCitiesClick) {
-        Text(text = localizedStringResource(R.string.home_manage_saved_cities))
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Button(onClick = { onOpenDetail(snapshot.city.id) }) {
+            Text(text = localizedStringResource(R.string.home_view_details))
+        }
+        Button(onClick = onManageCitiesClick) {
+            Text(text = localizedStringResource(R.string.home_manage_saved_cities))
+        }
     }
 }
 

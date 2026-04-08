@@ -3,6 +3,7 @@ package io.github.yeweijiehust.weatherforecast.feature.home
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import io.github.yeweijiehust.weatherforecast.core.localization.WeatherForecastLocalizedContent
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.City
@@ -10,6 +11,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
@@ -25,6 +27,7 @@ class HomeScreenTest {
                     HomeScreen(
                         uiState = HomeUiState(state = HomeState.EmptyNoCity),
                         onManageCitiesClick = {},
+                        onOpenDetail = {},
                         onPullToRefresh = {},
                     )
                 }
@@ -45,6 +48,7 @@ class HomeScreenTest {
                             state = HomeState.Content(snapshot = sampleSnapshot()),
                         ),
                         onManageCitiesClick = {},
+                        onOpenDetail = {},
                         onPullToRefresh = {},
                     )
                 }
@@ -74,6 +78,7 @@ class HomeScreenTest {
                             state = HomeState.Refreshing(snapshot = sampleSnapshot()),
                         ),
                         onManageCitiesClick = {},
+                        onOpenDetail = {},
                         onPullToRefresh = {},
                     )
                 }
@@ -94,6 +99,7 @@ class HomeScreenTest {
                             state = HomeState.ContentWithStaleCache(snapshot = sampleSnapshot()),
                         ),
                         onManageCitiesClick = {},
+                        onOpenDetail = {},
                         onPullToRefresh = {},
                     )
                 }
@@ -116,6 +122,7 @@ class HomeScreenTest {
                             ),
                         ),
                         onManageCitiesClick = {},
+                        onOpenDetail = {},
                         onPullToRefresh = {},
                     )
                 }
@@ -124,6 +131,30 @@ class HomeScreenTest {
 
         composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
         composeTestRule.onNodeWithText("We couldn't load current weather for this city.").assertIsDisplayed()
+    }
+
+    @Test
+    fun contentState_clickViewDetailsCallsOnOpenDetailWithCityId() {
+        var openedCityId: String? = null
+
+        composeTestRule.setContent {
+            WeatherForecastLocalizedContent(language = AppLanguage.English) {
+                WeatherForecastTheme {
+                    HomeScreen(
+                        uiState = HomeUiState(
+                            state = HomeState.Content(snapshot = sampleSnapshot()),
+                        ),
+                        onManageCitiesClick = {},
+                        onOpenDetail = { cityId -> openedCityId = cityId },
+                        onPullToRefresh = {},
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("View details").performClick()
+
+        assertEquals("101020100", openedCityId)
     }
 
     private fun sampleSnapshot(): HomeSnapshot {

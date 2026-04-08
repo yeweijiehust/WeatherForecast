@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -31,10 +32,12 @@ import androidx.navigation.compose.rememberNavController
 import io.github.yeweijiehust.weatherforecast.R
 import io.github.yeweijiehust.weatherforecast.core.localization.localizedStringResource
 import io.github.yeweijiehust.weatherforecast.core.navigation.WeatherForecastDestination
+import io.github.yeweijiehust.weatherforecast.feature.detail.WeatherDetailRoute
 import io.github.yeweijiehust.weatherforecast.feature.home.HomeRoute
 import io.github.yeweijiehust.weatherforecast.feature.search.CitySearchRoute
 import io.github.yeweijiehust.weatherforecast.feature.settings.SettingsRoute
 import kotlinx.coroutines.launch
+import androidx.navigation.navArgument
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -71,7 +74,9 @@ fun WeatherForecastApp() {
                 .fillMaxSize()
                 .padding(innerPadding),
             navigationSuiteItems = {
-                WeatherForecastDestination.entries.forEach { destination ->
+                WeatherForecastDestination.entries
+                    .filter { destination -> destination.isTopLevel }
+                    .forEach { destination ->
                     item(
                         selected = destination == currentDestination,
                         onClick = {
@@ -83,6 +88,7 @@ fun WeatherForecastApp() {
                                     WeatherForecastDestination.Home -> Icons.Filled.Home
                                     WeatherForecastDestination.Search -> Icons.Filled.Search
                                     WeatherForecastDestination.Settings -> Icons.Filled.Settings
+                                    WeatherForecastDestination.Detail -> Icons.Filled.Home
                                 },
                                 contentDescription = localizedStringResource(destination.titleResId),
                             )
@@ -101,6 +107,9 @@ fun WeatherForecastApp() {
                     HomeRoute(
                         onManageCitiesClick = {
                             navController.navigateToTopLevelDestination(WeatherForecastDestination.Search)
+                        },
+                        onOpenDetail = { cityId ->
+                            navController.navigate(WeatherForecastDestination.Detail.routeForCity(cityId))
                         },
                         onShowMessage = { message, actionLabel, onAction ->
                             coroutineScope.launch {
@@ -132,6 +141,16 @@ fun WeatherForecastApp() {
                             }
                         },
                     )
+                }
+                composable(
+                    route = WeatherForecastDestination.Detail.route,
+                    arguments = listOf(
+                        navArgument(WeatherForecastDestination.Detail.cityIdArg) {
+                            type = NavType.StringType
+                        },
+                    ),
+                ) {
+                    WeatherDetailRoute()
                 }
             }
         }
