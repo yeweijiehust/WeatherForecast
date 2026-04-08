@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 android {
-    namespace = "com.example.weatherforecast"
+    namespace = "io.github.yeweijiehust.weatherforecast"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.weatherforecast"
+        applicationId = "io.github.yeweijiehust.weatherforecast"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

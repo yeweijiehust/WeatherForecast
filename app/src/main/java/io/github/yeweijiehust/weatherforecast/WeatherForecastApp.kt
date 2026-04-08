@@ -1,0 +1,91 @@
+package io.github.yeweijiehust.weatherforecast
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import io.github.yeweijiehust.weatherforecast.core.navigation.WeatherForecastDestination
+import io.github.yeweijiehust.weatherforecast.feature.home.HomeScreen
+import io.github.yeweijiehust.weatherforecast.feature.search.CitySearchScreen
+import io.github.yeweijiehust.weatherforecast.feature.settings.SettingsScreen
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WeatherForecastApp() {
+    val navController = rememberNavController()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination =
+        WeatherForecastDestination.fromRoute(backStackEntry?.destination?.route)
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text(text = currentDestination.title) },
+                navigationIcon = {
+                    if (currentDestination != WeatherForecastDestination.Home) {
+                        TextButton(onClick = navController::navigateUp) {
+                            Text(text = "Back")
+                        }
+                    }
+                },
+                actions = {
+                    if (currentDestination == WeatherForecastDestination.Home) {
+                        TextButton(
+                            onClick = {
+                                navController.navigate(WeatherForecastDestination.Search.route)
+                            }
+                        ) {
+                            Text(text = "Manage Cities")
+                        }
+                        TextButton(
+                            onClick = {
+                                navController.navigate(WeatherForecastDestination.Settings.route)
+                            }
+                        ) {
+                            Text(text = "Settings")
+                        }
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = WeatherForecastDestination.Home.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(WeatherForecastDestination.Home.route) {
+                HomeScreen(
+                    onManageCitiesClick = {
+                        navController.navigate(WeatherForecastDestination.Search.route)
+                    },
+                    onSettingsClick = {
+                        navController.navigate(WeatherForecastDestination.Settings.route)
+                    }
+                )
+            }
+            composable(WeatherForecastDestination.Search.route) {
+                CitySearchScreen()
+            }
+            composable(WeatherForecastDestination.Settings.route) {
+                SettingsScreen()
+            }
+        }
+    }
+}
