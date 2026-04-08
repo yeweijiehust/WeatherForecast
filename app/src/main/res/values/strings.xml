@@ -74,6 +74,14 @@
     <string name="detail_title_for_city">Weather detail for %1$s</string>
     <string name="detail_placeholder_body">Post-MVP detail sections will be enabled step by step.</string>
     <string name="detail_partial_content">Some detail datasets are currently unavailable.</string>
+    <string name="detail_hourly_title">Hourly timeline</string>
+    <string name="detail_hourly_empty">No hourly forecast data yet.</string>
+    <string name="detail_hourly_unavailable">Hourly forecast is temporarily unavailable.</string>
+    <string name="detail_hourly_item">%1$s  •  %2$s°  •  %3$s</string>
+    <string name="detail_daily_title">Daily forecast</string>
+    <string name="detail_daily_empty">No daily forecast data yet.</string>
+    <string name="detail_daily_unavailable">Daily forecast is temporarily unavailable.</string>
+    <string name="detail_daily_item">%1$s  •  High %2$s° / Low %3$s°  •  %4$s</string>
     <string name="detail_alert_section_title">Weather alerts</string>
     <string name="detail_alert_count">%1$d active alert(s)</string>
     <string name="detail_alert_empty">No active weather alerts.</string>

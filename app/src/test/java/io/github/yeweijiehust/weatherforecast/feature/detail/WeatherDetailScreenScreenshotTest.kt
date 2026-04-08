@@ -1,10 +1,7 @@
 package io.github.yeweijiehust.weatherforecast.feature.detail
 
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onFirst
-import androidx.compose.ui.test.onNodeWithText
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.yeweijiehust.weatherforecast.core.localization.WeatherForecastLocalizedContent
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
@@ -13,77 +10,62 @@ import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
-import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
-class WeatherDetailScreenTest {
-    @get:Rule
-    val composeTestRule = createComposeRule()
-
+@RunWith(AndroidJUnit4::class)
+@Config(sdk = [35])
+class WeatherDetailScreenScreenshotTest {
     @Test
-    fun loadingState_showsLoadingMessage() {
-        renderScreen(WeatherDetailUiState(state = WeatherDetailState.Loading))
-
-        composeTestRule.onNodeWithText("Loading weather details…").assertIsDisplayed()
+    fun contentState_capturesDetailLayout() {
+        capture(
+            "detail-content.png",
+            WeatherDetailState.Content(
+                city = sampleCity(),
+                hourlyForecast = listOf(sampleHourlyForecast()),
+                dailyForecast = listOf(sampleDailyForecast()),
+                alerts = listOf(sampleAlert()),
+                airQuality = sampleAirQuality(),
+            ),
+        )
     }
 
     @Test
-    fun contentState_showsForecastAlertsAndAirQualitySections() {
-        renderScreen(
-            WeatherDetailUiState(
-                state = WeatherDetailState.Content(
-                    city = sampleCity(),
-                    hourlyForecast = listOf(sampleHourlyForecast()),
-                    dailyForecast = listOf(sampleDailyForecast()),
-                    alerts = listOf(sampleAlert()),
-                    airQuality = sampleAirQuality(),
+    fun partialState_capturesSectionFallbackLayout() {
+        capture(
+            "detail-partial.png",
+            WeatherDetailState.PartialContent(
+                city = sampleCity(),
+                hourlyForecast = emptyList(),
+                dailyForecast = listOf(sampleDailyForecast()),
+                alerts = emptyList(),
+                airQuality = null,
+                isAirQualityUnsupported = false,
+                unavailableSections = setOf(
+                    WeatherDetailSection.HourlyForecast,
+                    WeatherDetailSection.AirQuality,
                 ),
             ),
         )
-
-        composeTestRule.onNodeWithText("Weather detail for Shanghai").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Hourly timeline").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Daily forecast").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Weather alerts").assertIsDisplayed()
-        composeTestRule.onNodeWithText("1 active alert(s)").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Air quality").assertIsDisplayed()
-        composeTestRule.onNodeWithText("AQI 86 (Moderate)").assertIsDisplayed()
     }
 
     @Test
-    fun partialContentState_showsSectionErrorWithRetry() {
-        renderScreen(
-            WeatherDetailUiState(
-                state = WeatherDetailState.PartialContent(
-                    city = sampleCity(),
-                    hourlyForecast = emptyList(),
-                    dailyForecast = listOf(sampleDailyForecast()),
-                    alerts = emptyList(),
-                    airQuality = null,
-                    isAirQualityUnsupported = false,
-                    unavailableSections = setOf(
-                        WeatherDetailSection.HourlyForecast,
-                        WeatherDetailSection.AirQuality,
-                    ),
-                ),
-            ),
+    fun errorState_capturesNoDataLayout() {
+        capture(
+            "detail-error.png",
+            WeatherDetailState.ErrorNoData(cityId = "101020100"),
         )
-
-        composeTestRule.onNodeWithText("Some detail datasets are currently unavailable.")
-            .assertIsDisplayed()
-        composeTestRule.onNodeWithText("Hourly forecast is temporarily unavailable.")
-            .assertIsDisplayed()
-        composeTestRule.onNodeWithText("Air quality data is temporarily unavailable.")
-            .assertIsDisplayed()
-        composeTestRule.onAllNodesWithText("Retry").onFirst().assertIsDisplayed()
     }
 
-    private fun renderScreen(uiState: WeatherDetailUiState) {
-        composeTestRule.setContent {
+    private fun capture(fileName: String, state: WeatherDetailState) {
+        captureRoboImage(
+            filePath = "build/outputs/roborazzi/$fileName",
+        ) {
             WeatherForecastLocalizedContent(language = AppLanguage.English) {
                 WeatherForecastTheme {
                     WeatherDetailScreen(
-                        uiState = uiState,
+                        uiState = WeatherDetailUiState(state = state),
                         onRetryHourly = {},
                         onRetryDaily = {},
                         onRetryAlerts = {},

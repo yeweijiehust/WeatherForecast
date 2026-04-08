@@ -2,6 +2,8 @@ package io.github.yeweijiehust.weatherforecast.feature.detail
 
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.City
+import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 
 data class WeatherDetailUiState(
@@ -13,6 +15,8 @@ sealed interface WeatherDetailState {
 
     data class Content(
         val city: City,
+        val hourlyForecast: List<HourlyForecast> = emptyList(),
+        val dailyForecast: List<DailyForecast> = emptyList(),
         val alerts: List<WeatherAlert> = emptyList(),
         val airQuality: AirQuality? = null,
         val isAirQualityUnsupported: Boolean = false,
@@ -20,6 +24,8 @@ sealed interface WeatherDetailState {
 
     data class PartialContent(
         val city: City,
+        val hourlyForecast: List<HourlyForecast> = emptyList(),
+        val dailyForecast: List<DailyForecast> = emptyList(),
         val alerts: List<WeatherAlert> = emptyList(),
         val airQuality: AirQuality? = null,
         val isAirQualityUnsupported: Boolean = false,
@@ -32,6 +38,8 @@ sealed interface WeatherDetailState {
 }
 
 enum class WeatherDetailSection {
+    HourlyForecast,
+    DailyForecast,
     Alerts,
     AirQuality,
     MinutePrecipitation,
