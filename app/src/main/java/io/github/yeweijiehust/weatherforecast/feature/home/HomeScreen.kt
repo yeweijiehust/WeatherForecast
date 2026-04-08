@@ -8,11 +8,30 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+@Composable
+fun HomeRoute(
+    onManageCitiesClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    viewModel: HomeViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    HomeScreen(
+        uiState = uiState,
+        onManageCitiesClick = onManageCitiesClick,
+        onSettingsClick = onSettingsClick,
+    )
+}
 
 @Composable
 fun HomeScreen(
+    uiState: HomeUiState,
     onManageCitiesClick: () -> Unit,
     onSettingsClick: () -> Unit,
 ) {
@@ -20,18 +39,39 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            text = "Project foundation is ready.",
-            style = MaterialTheme.typography.headlineSmall
-        )
-        Text(
-            text = "Weather dashboard will be implemented in the next steps.",
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Button(onClick = onManageCitiesClick) {
-            Text(text = "Open City Search")
+        if (uiState.defaultCity == null) {
+            Text(
+                text = "No city selected yet.",
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Text(
+                text = "Search and save a city to prepare your Home screen weather view.",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Button(onClick = onManageCitiesClick) {
+                Text(text = "Add your first city")
+            }
+        } else {
+            Text(
+                text = "Current city",
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Text(
+                text = uiState.defaultCity.name,
+                style = MaterialTheme.typography.headlineMedium,
+            )
+            Text(
+                text = listOf(
+                    uiState.defaultCity.adm1,
+                    uiState.defaultCity.country,
+                ).filter { it.isNotBlank() }.distinct().joinToString(),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Button(onClick = onManageCitiesClick) {
+                Text(text = "Manage saved cities")
+            }
         }
         Button(onClick = onSettingsClick) {
             Text(text = "Open Settings Screen")

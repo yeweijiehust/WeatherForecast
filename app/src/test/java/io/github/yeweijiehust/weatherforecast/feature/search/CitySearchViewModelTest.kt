@@ -3,11 +3,18 @@ package io.github.yeweijiehust.weatherforecast.feature.search
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import io.github.yeweijiehust.weatherforecast.domain.model.City
+import io.github.yeweijiehust.weatherforecast.domain.model.SaveCityResult
+import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveSavedCitiesUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.RemoveSavedCityUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.SaveCityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.SearchCitiesUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.SetDefaultCityUseCase
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -125,7 +132,18 @@ class CitySearchViewModelTest {
         searchCitiesUseCase: SearchCitiesUseCase = mockk<SearchCitiesUseCase>().also { useCase ->
             coEvery { useCase.invoke(any()) } returns emptyList()
         },
+        observeSavedCitiesUseCase: ObserveSavedCitiesUseCase = mockk<ObserveSavedCitiesUseCase>().also { useCase ->
+            every { useCase.invoke() } returns MutableStateFlow(emptyList())
+        },
     ): CitySearchViewModel {
-        return CitySearchViewModel(searchCitiesUseCase = searchCitiesUseCase)
+        return CitySearchViewModel(
+            searchCitiesUseCase = searchCitiesUseCase,
+            observeSavedCitiesUseCase = observeSavedCitiesUseCase,
+            saveCityUseCase = mockk<SaveCityUseCase>().also { useCase ->
+                coEvery { useCase.invoke(any()) } returns SaveCityResult.Saved
+            },
+            setDefaultCityUseCase = mockk<SetDefaultCityUseCase>(relaxed = true),
+            removeSavedCityUseCase = mockk<RemoveSavedCityUseCase>(relaxed = true),
+        )
     }
 }

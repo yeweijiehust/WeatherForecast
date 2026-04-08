@@ -12,11 +12,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -28,15 +30,27 @@ import io.github.yeweijiehust.weatherforecast.domain.model.City
 
 @Composable
 fun CitySearchRoute(
+    onShowMessage: (String) -> Unit,
     viewModel: CitySearchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is CitySearchEvent.ShowMessage -> onShowMessage(event.message)
+            }
+        }
+    }
 
     CitySearchScreen(
         uiState = uiState,
         onQueryChanged = viewModel::onQueryChanged,
         onSearch = viewModel::search,
         onRetry = viewModel::retry,
+        onSaveCity = viewModel::saveCity,
+        onSetDefaultCity = viewModel::setDefaultCity,
+        onRemoveCity = viewModel::removeCity,
     )
 }
 
@@ -46,6 +60,9 @@ fun CitySearchScreen(
     onQueryChanged: (String) -> Unit,
     onSearch: () -> Unit,
     onRetry: () -> Unit,
+    onSaveCity: (City) -> Unit,
+    onSetDefaultCity: (String) -> Unit,
+    onRemoveCity: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -60,11 +77,6 @@ fun CitySearchScreen(
         Text(
             text = "Search by city name to see clear, disambiguated results.",
             style = MaterialTheme.typography.bodyLarge,
-        )
-        Text(
-            text = "Saved city management arrives in the next step.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         Row(
@@ -98,13 +110,23 @@ fun CitySearchScreen(
         when (val resultState = uiState.resultState) {
             CitySearchResultState.Idle -> IdleState()
             CitySearchResultState.Searching -> SearchingState()
-            is CitySearchResultState.Results -> ResultsState(cities = resultState.cities)
+            is CitySearchResultState.Results -> ResultsState(
+                cities = resultState.cities,
+                savedCityIds = uiState.savedCities.map(City::id).toSet(),
+                onSaveCity = onSaveCity,
+            )
             is CitySearchResultState.EmptyResult -> EmptyResultState(query = resultState.query)
             is CitySearchResultState.Error -> ErrorState(
                 message = resultState.message,
                 onRetry = onRetry,
             )
         }
+
+        SavedCitiesSection(
+            savedCities = uiState.savedCities,
+            onSetDefaultCity = onSetDefaultCity,
+            onRemoveCity = onRemoveCity,
+        )
     }
 }
 
@@ -143,18 +165,24 @@ private fun SearchingState() {
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.ResultsState(
     cities: List<City>,
+    savedCityIds: Set<String>,
+    onSaveCity: (City) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
-            .weight(1f),
+            .weight(1f, fill = false),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(
             items = cities,
             key = City::id,
         ) { city ->
-            CityResultCard(city = city)
+            CityResultCard(
+                city = city,
+                isSaved = city.id in savedCityIds,
+                onSaveCity = onSaveCity,
+            )
         }
     }
 }
@@ -162,6 +190,8 @@ private fun androidx.compose.foundation.layout.ColumnScope.ResultsState(
 @Composable
 private fun CityResultCard(
     city: City,
+    isSaved: Boolean,
+    onSaveCity: (City) -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -186,6 +216,9 @@ private fun CityResultCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            Button(onClick = { onSaveCity(city) }) {
+                Text(text = if (isSaved) "Saved" else "Save")
             }
         }
     }
@@ -226,6 +259,89 @@ private fun ErrorState(
         )
         Button(onClick = onRetry) {
             Text(text = "Retry")
+        }
+    }
+}
+
+@Composable
+private fun SavedCitiesSection(
+    savedCities: List<City>,
+    onSetDefaultCity: (String) -> Unit,
+    onRemoveCity: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = "Saved cities",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        if (savedCities.isEmpty()) {
+            Text(
+                text = "No saved cities yet. Search for a city to get started.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            return
+        }
+
+        savedCities.forEach { city ->
+            SavedCityCard(
+                city = city,
+                onSetDefaultCity = onSetDefaultCity,
+                onRemoveCity = onRemoveCity,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SavedCityCard(
+    city: City,
+    onSetDefaultCity: (String) -> Unit,
+    onRemoveCity: (String) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = city.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                if (city.isDefault) {
+                    Text(
+                        text = "Default",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            Text(
+                text = city.disambiguationLine(),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (!city.isDefault) {
+                    FilledTonalButton(onClick = { onSetDefaultCity(city.id) }) {
+                        Text(text = "Set default")
+                    }
+                }
+                Button(onClick = { onRemoveCity(city.id) }) {
+                    Text(text = "Remove")
+                }
+            }
         }
     }
 }

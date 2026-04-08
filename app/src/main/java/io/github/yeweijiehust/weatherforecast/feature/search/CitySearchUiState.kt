@@ -5,6 +5,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.City
 data class CitySearchUiState(
     val query: String = "",
     val resultState: CitySearchResultState = CitySearchResultState.Idle,
+    val savedCities: List<City> = emptyList(),
 )
 
 sealed interface CitySearchResultState {
@@ -24,4 +25,10 @@ sealed interface CitySearchResultState {
         val query: String,
         val message: String,
     ) : CitySearchResultState
+}
+
+sealed interface CitySearchEvent {
+    data class ShowMessage(
+        val message: String,
+    ) : CitySearchEvent
 }

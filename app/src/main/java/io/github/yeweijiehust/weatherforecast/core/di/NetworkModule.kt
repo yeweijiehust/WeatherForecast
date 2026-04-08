@@ -7,6 +7,8 @@ import dagger.hilt.components.SingletonComponent
 import io.github.yeweijiehust.weatherforecast.BuildConfig
 import io.github.yeweijiehust.weatherforecast.data.remote.api.GeoApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
+import io.github.yeweijiehust.weatherforecast.data.local.source.DefaultCityPreferencesDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.SavedCityLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.repository.QWeatherCityRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.SearchLanguageProvider
@@ -95,9 +97,13 @@ object NetworkModule {
     fun provideCityRepository(
         geoApiService: GeoApiService,
         qWeatherConfig: QWeatherConfig,
+        savedCityLocalDataSource: SavedCityLocalDataSource,
+        defaultCityPreferencesDataSource: DefaultCityPreferencesDataSource,
     ): CityRepository = QWeatherCityRepository(
         geoApiService = geoApiService,
         qWeatherConfig = qWeatherConfig,
+        savedCityLocalDataSource = savedCityLocalDataSource,
+        defaultCityPreferencesDataSource = defaultCityPreferencesDataSource,
     )
 
     @Provides

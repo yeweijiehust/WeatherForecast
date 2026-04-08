@@ -14,7 +14,7 @@ class MainActivityShellTest {
     @Test
     fun launch_showsHomeScaffold() {
         composeTestRule.onNodeWithText("Home").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Project foundation is ready.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No city selected yet.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Search Cities").assertIsDisplayed()
         composeTestRule.onNodeWithText("Settings").assertIsDisplayed()
     }
@@ -25,7 +25,7 @@ class MainActivityShellTest {
         composeTestRule.onNodeWithText("Find a city").assertIsDisplayed()
 
         composeTestRule.onNodeWithText("Back").performClick()
-        composeTestRule.onNodeWithText("Project foundation is ready.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No city selected yet.").assertIsDisplayed()
 
         composeTestRule.onNodeWithText("Settings").performClick()
         composeTestRule.onNodeWithText("Settings screen shell").assertIsDisplayed()

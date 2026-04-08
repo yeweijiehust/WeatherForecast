@@ -1,6 +1,9 @@
 package io.github.yeweijiehust.weatherforecast.data.repository
 
 import com.google.common.truth.Truth.assertThat
+import io.github.yeweijiehust.weatherforecast.data.local.model.SavedCityLocalModel
+import io.github.yeweijiehust.weatherforecast.data.local.source.DefaultCityPreferencesDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.SavedCityLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.remote.api.GeoApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CityDto
@@ -8,6 +11,8 @@ import io.github.yeweijiehust.weatherforecast.data.remote.dto.CityLookupResponse
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -42,6 +47,8 @@ class QWeatherCityRepositoryTest {
                 apiKey = "test-key",
                 apiHost = "example.com",
             ),
+            savedCityLocalDataSource = EmptySavedCityLocalDataSource,
+            defaultCityPreferencesDataSource = EmptyDefaultCityPreferencesDataSource,
         )
 
         val cities = repository.searchCities(
@@ -68,6 +75,8 @@ class QWeatherCityRepositoryTest {
         val repository = QWeatherCityRepository(
             geoApiService = service,
             qWeatherConfig = QWeatherConfig(apiKey = "", apiHost = ""),
+            savedCityLocalDataSource = EmptySavedCityLocalDataSource,
+            defaultCityPreferencesDataSource = EmptyDefaultCityPreferencesDataSource,
         )
 
         val error = runCatching {
@@ -98,6 +107,8 @@ class QWeatherCityRepositoryTest {
                 apiKey = "test-key",
                 apiHost = "example.com",
             ),
+            savedCityLocalDataSource = EmptySavedCityLocalDataSource,
+            defaultCityPreferencesDataSource = EmptyDefaultCityPreferencesDataSource,
         )
 
         val error = runCatching {
@@ -116,5 +127,27 @@ class QWeatherCityRepositoryTest {
                 number = 10,
             )
         }
+    }
+
+    private object EmptySavedCityLocalDataSource : SavedCityLocalDataSource {
+        override fun observeSavedCities(): Flow<List<SavedCityLocalModel>> = emptyFlow()
+
+        override suspend fun getSavedCities(): List<SavedCityLocalModel> = emptyList()
+
+        override suspend fun getSavedCity(locationId: String): SavedCityLocalModel? = null
+
+        override suspend fun insertCity(city: SavedCityLocalModel): Boolean = true
+
+        override suspend fun deleteCity(locationId: String) = Unit
+
+        override suspend fun nextSortOrder(): Int = 0
+    }
+
+    private object EmptyDefaultCityPreferencesDataSource : DefaultCityPreferencesDataSource {
+        override fun observeDefaultCityId(): Flow<String?> = emptyFlow()
+
+        override suspend fun getDefaultCityId(): String? = null
+
+        override suspend fun setDefaultCityId(cityId: String?) = Unit
     }
 }

@@ -3,12 +3,21 @@ package io.github.yeweijiehust.weatherforecast.feature.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.yeweijiehust.weatherforecast.domain.model.City
+import io.github.yeweijiehust.weatherforecast.domain.model.SaveCityResult
+import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveSavedCitiesUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.RemoveSavedCityUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.SaveCityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.SearchCitiesUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.SetDefaultCityUseCase
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -16,11 +25,27 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class CitySearchViewModel @Inject constructor(
     private val searchCitiesUseCase: SearchCitiesUseCase,
+    private val observeSavedCitiesUseCase: ObserveSavedCitiesUseCase,
+    private val saveCityUseCase: SaveCityUseCase,
+    private val setDefaultCityUseCase: SetDefaultCityUseCase,
+    private val removeSavedCityUseCase: RemoveSavedCityUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CitySearchUiState())
     val uiState: StateFlow<CitySearchUiState> = _uiState.asStateFlow()
+    private val _events = MutableSharedFlow<CitySearchEvent>()
+    val events: SharedFlow<CitySearchEvent> = _events.asSharedFlow()
 
     private var searchJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            observeSavedCitiesUseCase().collect { savedCities ->
+                _uiState.update { state ->
+                    state.copy(savedCities = savedCities)
+                }
+            }
+        }
+    }
 
     fun onQueryChanged(query: String) {
         searchJob?.cancel()
@@ -73,6 +98,31 @@ class CitySearchViewModel @Inject constructor(
 
     fun retry() {
         search()
+    }
+
+    fun saveCity(city: City) {
+        viewModelScope.launch {
+            val result = saveCityUseCase(city)
+            val message = when (result) {
+                SaveCityResult.Saved -> "City saved."
+                SaveCityResult.Duplicate -> "City already saved."
+            }
+            _events.emit(CitySearchEvent.ShowMessage(message))
+        }
+    }
+
+    fun setDefaultCity(cityId: String) {
+        viewModelScope.launch {
+            setDefaultCityUseCase(cityId)
+            _events.emit(CitySearchEvent.ShowMessage("Default city updated."))
+        }
+    }
+
+    fun removeCity(cityId: String) {
+        viewModelScope.launch {
+            removeSavedCityUseCase(cityId)
+            _events.emit(CitySearchEvent.ShowMessage("City removed."))
+        }
     }
 
     private companion object {
