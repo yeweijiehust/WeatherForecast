@@ -4,15 +4,8 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import io.github.yeweijiehust.weatherforecast.BuildConfig
 import io.github.yeweijiehust.weatherforecast.data.remote.api.GeoApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
-import io.github.yeweijiehust.weatherforecast.data.local.source.DefaultCityPreferencesDataSource
-import io.github.yeweijiehust.weatherforecast.data.local.source.SavedCityLocalDataSource
-import io.github.yeweijiehust.weatherforecast.data.repository.QWeatherCityRepository
-import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
-import io.github.yeweijiehust.weatherforecast.domain.repository.SearchLanguageProvider
-import java.util.Locale
 import javax.inject.Singleton
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -24,15 +17,6 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-    @Provides
-    @Singleton
-    fun provideQWeatherConfig(): QWeatherConfig {
-        return QWeatherConfig(
-            apiKey = BuildConfig.QWEATHER_API_KEY,
-            apiHost = BuildConfig.QWEATHER_API_HOST,
-        )
-    }
-
     @Provides
     @Singleton
     fun provideJson(): Json {
@@ -47,11 +31,7 @@ object NetworkModule {
         qWeatherConfig: QWeatherConfig,
     ): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BASIC
-            } else {
-                HttpLoggingInterceptor.Level.NONE
-            }
+            level = HttpLoggingInterceptor.Level.BASIC
         }
 
         return OkHttpClient.Builder()
@@ -91,28 +71,4 @@ object NetworkModule {
     fun provideGeoApiService(
         retrofit: Retrofit,
     ): GeoApiService = retrofit.create(GeoApiService::class.java)
-
-    @Provides
-    @Singleton
-    fun provideCityRepository(
-        geoApiService: GeoApiService,
-        qWeatherConfig: QWeatherConfig,
-        savedCityLocalDataSource: SavedCityLocalDataSource,
-        defaultCityPreferencesDataSource: DefaultCityPreferencesDataSource,
-    ): CityRepository = QWeatherCityRepository(
-        geoApiService = geoApiService,
-        qWeatherConfig = qWeatherConfig,
-        savedCityLocalDataSource = savedCityLocalDataSource,
-        defaultCityPreferencesDataSource = defaultCityPreferencesDataSource,
-    )
-
-    @Provides
-    @Singleton
-    fun provideSearchLanguageProvider(): SearchLanguageProvider {
-        return object : SearchLanguageProvider {
-            override fun currentLanguage(): String {
-                return Locale.getDefault().language.ifBlank { "en" }
-            }
-        }
-    }
 }

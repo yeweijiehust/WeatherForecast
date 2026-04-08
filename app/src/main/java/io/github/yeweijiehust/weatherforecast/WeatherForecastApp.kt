@@ -21,7 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import io.github.yeweijiehust.weatherforecast.core.navigation.WeatherForecastDestination
 import io.github.yeweijiehust.weatherforecast.feature.home.HomeRoute
 import io.github.yeweijiehust.weatherforecast.feature.search.CitySearchRoute
-import io.github.yeweijiehust.weatherforecast.feature.settings.SettingsScreen
+import io.github.yeweijiehust.weatherforecast.feature.settings.SettingsRoute
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,7 +93,13 @@ fun WeatherForecastApp() {
                 )
             }
             composable(WeatherForecastDestination.Settings.route) {
-                SettingsScreen()
+                SettingsRoute(
+                    onShowMessage = { message ->
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(message)
+                        }
+                    },
+                )
             }
         }
     }

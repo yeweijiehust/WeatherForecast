@@ -28,6 +28,6 @@ class MainActivityShellTest {
         composeTestRule.onNodeWithText("No city selected yet.").assertIsDisplayed()
 
         composeTestRule.onNodeWithText("Settings").performClick()
-        composeTestRule.onNodeWithText("Settings screen shell").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Control units, language, and cache settings.").assertIsDisplayed()
     }
 }

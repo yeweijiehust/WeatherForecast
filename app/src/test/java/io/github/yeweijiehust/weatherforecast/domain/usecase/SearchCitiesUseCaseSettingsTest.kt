@@ -10,66 +10,60 @@ import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsReposito
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-class SearchCitiesUseCaseTest {
+class SearchCitiesUseCaseSettingsTest {
     @Test
-    fun invoke_returnsEmptyWithoutCallingRepository_whenQueryIsBlank() = runTest {
-        val repository = mockk<CityRepository>()
-        val settingsRepository = mockk<SettingsRepository>()
-        val useCase = SearchCitiesUseCase(
-            cityRepository = repository,
-            settingsRepository = settingsRepository,
-        )
-
-        val result = useCase("   ")
-
-        assertThat(result).isEmpty()
-        coVerify(exactly = 0) { repository.searchCities(any(), any()) }
-        coVerify(exactly = 0) { settingsRepository.getCurrentSettings() }
-    }
-
-    @Test
-    fun invoke_trimsQueryAndUsesCurrentLanguage() = runTest {
+    fun invoke_usesLanguageFromSettingsRepository() = runTest {
         val expectedCities = listOf(
             City(
-                id = "101010100",
-                name = "Beijing",
-                adm1 = "Beijing",
-                adm2 = "Beijing",
+                id = "101020100",
+                name = "Shanghai",
+                adm1 = "Shanghai",
+                adm2 = "Shanghai",
                 country = "China",
-                lat = "39.90",
-                lon = "116.40",
+                lat = "31.23",
+                lon = "121.47",
                 timeZone = "Asia/Shanghai",
             ),
         )
-        val repository = mockk<CityRepository>()
+        val cityRepository = mockk<CityRepository>()
         val settingsRepository = mockk<SettingsRepository>()
         coEvery { settingsRepository.getCurrentSettings() } returns AppSettings(
             language = AppLanguage.SimplifiedChinese,
             unitSystem = UnitSystem.Metric,
         )
         coEvery {
-            repository.searchCities(
-                query = "Beijing",
+            cityRepository.searchCities(
+                query = "Shanghai",
                 language = "zh",
             )
         } returns expectedCities
         val useCase = SearchCitiesUseCase(
-            cityRepository = repository,
+            cityRepository = cityRepository,
             settingsRepository = settingsRepository,
         )
 
-        val result = useCase("  Beijing  ")
+        val result = useCase("Shanghai")
 
         assertThat(result).isEqualTo(expectedCities)
         coVerify(exactly = 1) { settingsRepository.getCurrentSettings() }
         coVerify(exactly = 1) {
-            repository.searchCities(
-                query = "Beijing",
+            cityRepository.searchCities(
+                query = "Shanghai",
                 language = "zh",
             )
         }
+    }
+
+    private class UnusedSettingsRepository : SettingsRepository {
+        override fun observeAppSettings(): Flow<AppSettings> = emptyFlow()
+        override suspend fun getCurrentSettings(): AppSettings = AppSettings()
+        override suspend fun updateLanguage(language: AppLanguage) = Unit
+        override suspend fun updateUnitSystem(unitSystem: UnitSystem) = Unit
+        override suspend fun clearWeatherCache() = Unit
     }
 }
