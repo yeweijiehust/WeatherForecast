@@ -3,17 +3,20 @@ package io.github.yeweijiehust.weatherforecast.data.repository
 import com.google.common.truth.Truth.assertThat
 import io.github.yeweijiehust.weatherforecast.data.local.model.CurrentWeatherLocalModel
 import io.github.yeweijiehust.weatherforecast.data.local.source.CurrentWeatherLocalDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.model.HourlyForecastLocalModel
+import io.github.yeweijiehust.weatherforecast.data.local.source.HourlyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.remote.api.WeatherApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CurrentWeatherDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CurrentWeatherResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResponseDto
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.AppSettings
 import io.github.yeweijiehust.weatherforecast.domain.model.UnitSystem
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +44,30 @@ class QWeatherWeatherRepositoryTest {
 
         assertThat(observed?.cityId).isEqualTo("101020100")
         assertThat(observed?.conditionText).isEqualTo("Sunny")
+        assertThat(localDataSource.lastObservedLanguage).isEqualTo("en")
+        assertThat(localDataSource.lastObservedUnitSystem).isEqualTo("metric")
+    }
+
+    @Test
+    fun observeHourlyForecast_usesSettingsCompatibleCache() = runTest {
+        val localDataSource = FakeHourlyForecastLocalDataSource(
+            hourlyForecast = listOf(sampleHourlyForecastLocal()),
+        )
+        val repository = createRepository(
+            hourlyForecastLocalDataSource = localDataSource,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val observed = repository.observeHourlyForecast("101020100").first()
+
+        assertThat(observed).hasSize(1)
+        assertThat(observed.first().cityId).isEqualTo("101020100")
+        assertThat(observed.first().conditionText).isEqualTo("Cloudy")
         assertThat(localDataSource.lastObservedLanguage).isEqualTo("en")
         assertThat(localDataSource.lastObservedUnitSystem).isEqualTo("metric")
     }
@@ -98,11 +125,64 @@ class QWeatherWeatherRepositoryTest {
     }
 
     @Test
+    fun refreshHourlyForecast_requestsUsingCurrentSettingsAndCachesResult() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        val localDataSource = FakeHourlyForecastLocalDataSource()
+        coEvery {
+            weatherApiService.getHourlyForecast(
+                locationId = "101020100",
+                language = "zh",
+                unit = "i",
+            )
+        } returns HourlyForecastResponseDto(
+            code = "200",
+            hourly = listOf(
+                HourlyForecastDto(
+                    forecastTime = "2026-04-08T16:00+08:00",
+                    temperature = "82",
+                    conditionText = "Cloudy",
+                    conditionIcon = "101",
+                    precipitationProbability = "20",
+                    precipitation = "0.0",
+                    windDirection = "South",
+                    windScale = "2",
+                    windSpeed = "8",
+                ),
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            hourlyForecastLocalDataSource = localDataSource,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.SimplifiedChinese,
+                    unitSystem = UnitSystem.Imperial,
+                ),
+            ),
+        )
+
+        repository.refreshHourlyForecast("101020100")
+
+        coVerify(exactly = 1) {
+            weatherApiService.getHourlyForecast(
+                locationId = "101020100",
+                language = "zh",
+                unit = "i",
+            )
+        }
+        assertThat(localDataSource.lastReplaceLanguage).isEqualTo("zh")
+        assertThat(localDataSource.lastReplaceUnitSystem).isEqualTo("imperial")
+        assertThat(localDataSource.replacedHourlyForecast).hasSize(1)
+        assertThat(localDataSource.replacedHourlyForecast?.first()?.temperature).isEqualTo("82")
+    }
+
+    @Test
     fun refreshCurrentWeather_throwsWhenApiConfigMissing() = runTest {
         val repository = QWeatherWeatherRepository(
             weatherApiService = mockk(),
             qWeatherConfig = QWeatherConfig(apiKey = "", apiHost = ""),
             currentWeatherLocalDataSource = FakeCurrentWeatherLocalDataSource(),
+            hourlyForecastLocalDataSource = FakeHourlyForecastLocalDataSource(),
             settingsRepository = FakeSettingsRepository(),
         )
 
@@ -117,6 +197,7 @@ class QWeatherWeatherRepositoryTest {
     private fun createRepository(
         weatherApiService: WeatherApiService = mockk(),
         currentWeatherLocalDataSource: CurrentWeatherLocalDataSource = FakeCurrentWeatherLocalDataSource(),
+        hourlyForecastLocalDataSource: HourlyForecastLocalDataSource = FakeHourlyForecastLocalDataSource(),
         settingsRepository: SettingsRepository = FakeSettingsRepository(),
     ): QWeatherWeatherRepository {
         return QWeatherWeatherRepository(
@@ -126,6 +207,7 @@ class QWeatherWeatherRepositoryTest {
                 apiHost = "example.com",
             ),
             currentWeatherLocalDataSource = currentWeatherLocalDataSource,
+            hourlyForecastLocalDataSource = hourlyForecastLocalDataSource,
             settingsRepository = settingsRepository,
         )
     }
@@ -144,6 +226,22 @@ class QWeatherWeatherRepositoryTest {
         precipitation = "0.0",
         pressure = "1012",
         visibility = "16",
+        fetchedAtEpochMillis = 100L,
+        language = "en",
+        unitSystem = "metric",
+    )
+
+    private fun sampleHourlyForecastLocal() = HourlyForecastLocalModel(
+        cityId = "101020100",
+        forecastTime = "2026-04-08T16:00+08:00",
+        temperature = "24",
+        conditionText = "Cloudy",
+        conditionIcon = "101",
+        precipitationProbability = "20",
+        precipitation = "0.0",
+        windDirection = "South",
+        windScale = "2",
+        windSpeed = "13",
         fetchedAtEpochMillis = 100L,
         language = "en",
         unitSystem = "metric",
@@ -180,6 +278,49 @@ class QWeatherWeatherRepositoryTest {
 
         override suspend fun clearCurrentWeatherCache() {
             currentWeatherFlow.value = null
+        }
+    }
+
+    private class FakeHourlyForecastLocalDataSource(
+        hourlyForecast: List<HourlyForecastLocalModel> = emptyList(),
+    ) : HourlyForecastLocalDataSource {
+        private val hourlyForecastFlow = MutableStateFlow(hourlyForecast)
+        var replacedHourlyForecast: List<HourlyForecastLocalModel>? = null
+        var lastObservedLanguage: String? = null
+        var lastObservedUnitSystem: String? = null
+        var lastReplaceLanguage: String? = null
+        var lastReplaceUnitSystem: String? = null
+
+        override fun observeHourlyForecast(
+            cityId: String,
+            language: String,
+            unitSystem: String,
+        ): Flow<List<HourlyForecastLocalModel>> {
+            lastObservedLanguage = language
+            lastObservedUnitSystem = unitSystem
+            return hourlyForecastFlow
+        }
+
+        override suspend fun getHourlyForecast(
+            cityId: String,
+            language: String,
+            unitSystem: String,
+        ): List<HourlyForecastLocalModel> = hourlyForecastFlow.value
+
+        override suspend fun replaceHourlyForecast(
+            cityId: String,
+            language: String,
+            unitSystem: String,
+            hourlyForecast: List<HourlyForecastLocalModel>,
+        ) {
+            lastReplaceLanguage = language
+            lastReplaceUnitSystem = unitSystem
+            replacedHourlyForecast = hourlyForecast
+            hourlyForecastFlow.value = hourlyForecast
+        }
+
+        override suspend fun clearHourlyForecastCache() {
+            hourlyForecastFlow.value = emptyList()
         }
     }
 

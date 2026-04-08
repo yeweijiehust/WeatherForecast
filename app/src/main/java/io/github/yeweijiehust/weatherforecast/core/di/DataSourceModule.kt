@@ -9,9 +9,11 @@ import io.github.yeweijiehust.weatherforecast.data.local.source.CurrentWeatherLo
 import io.github.yeweijiehust.weatherforecast.data.local.source.DataStoreAppSettingsPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.DataStoreDefaultCityPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.DefaultCityPreferencesDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.HourlyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.RoomCurrentWeatherLocalDataSource
-import io.github.yeweijiehust.weatherforecast.data.local.source.RoomWeatherCacheCleaner
+import io.github.yeweijiehust.weatherforecast.data.local.source.RoomHourlyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.RoomSavedCityLocalDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.RoomWeatherCacheCleaner
 import io.github.yeweijiehust.weatherforecast.data.local.source.SavedCityLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.WeatherCacheCleaner
 
@@ -37,6 +39,11 @@ abstract class DataSourceModule {
     abstract fun bindCurrentWeatherLocalDataSource(
         roomCurrentWeatherLocalDataSource: RoomCurrentWeatherLocalDataSource,
     ): CurrentWeatherLocalDataSource
+
+    @Binds
+    abstract fun bindHourlyForecastLocalDataSource(
+        roomHourlyForecastLocalDataSource: RoomHourlyForecastLocalDataSource,
+    ): HourlyForecastLocalDataSource
 
     @Binds
     abstract fun bindWeatherCacheCleaner(

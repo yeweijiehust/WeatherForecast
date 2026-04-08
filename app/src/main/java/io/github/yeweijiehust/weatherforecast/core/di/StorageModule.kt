@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.yeweijiehust.weatherforecast.data.local.dao.CurrentWeatherDao
+import io.github.yeweijiehust.weatherforecast.data.local.dao.HourlyForecastDao
 import io.github.yeweijiehust.weatherforecast.data.local.dao.SavedCityDao
 import io.github.yeweijiehust.weatherforecast.data.local.db.WeatherForecastDatabase
 import javax.inject.Singleton
@@ -38,4 +39,9 @@ object StorageModule {
     fun provideCurrentWeatherDao(
         database: WeatherForecastDatabase,
     ): CurrentWeatherDao = database.currentWeatherDao()
+
+    @Provides
+    fun provideHourlyForecastDao(
+        database: WeatherForecastDatabase,
+    ): HourlyForecastDao = database.hourlyForecastDao()
 }

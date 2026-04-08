@@ -28,6 +28,9 @@
     <string name="home_label_wind">Wind</string>
     <string name="home_label_precipitation">Precipitation</string>
     <string name="home_label_visibility">Visibility</string>
+    <string name="home_hourly_title">Next 24 Hours</string>
+    <string name="home_hourly_empty">Hourly forecast is unavailable right now.</string>
+    <string name="home_hourly_pop">POP %1$s%%</string>
 
     <string name="search_title">Find a city</string>
     <string name="search_description">Search by city name to see clear, disambiguated results.</string>

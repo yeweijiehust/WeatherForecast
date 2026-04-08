@@ -28,6 +28,9 @@
     <string name="home_label_wind">风况</string>
     <string name="home_label_precipitation">降水</string>
     <string name="home_label_visibility">能见度</string>
+    <string name="home_hourly_title">未来 24 小时</string>
+    <string name="home_hourly_empty">当前暂无逐小时预报。</string>
+    <string name="home_hourly_pop">降水概率 %1$s%%</string>
 
     <string name="search_title">查找城市</string>
     <string name="search_description">按城市名称搜索，查看清晰的区分结果。</string>

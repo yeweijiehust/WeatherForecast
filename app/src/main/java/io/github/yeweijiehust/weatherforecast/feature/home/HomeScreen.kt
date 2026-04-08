@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +25,7 @@ import io.github.yeweijiehust.weatherforecast.R
 import io.github.yeweijiehust.weatherforecast.core.localization.localizedStringResource
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
+import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -60,6 +64,7 @@ fun HomeScreen(
             is HomeState.Content -> ContentState(
                 city = state.city,
                 currentWeather = state.currentWeather,
+                hourlyForecast = state.hourlyForecast,
                 onManageCitiesClick = onManageCitiesClick,
             )
             is HomeState.ErrorNoCache -> ErrorState(
@@ -112,6 +117,7 @@ private fun LoadingState(
 private fun ContentState(
     city: City,
     currentWeather: CurrentWeather,
+    hourlyForecast: List<HourlyForecast>,
     onManageCitiesClick: () -> Unit,
 ) {
     CurrentWeatherHeroCard(
@@ -119,6 +125,7 @@ private fun ContentState(
         currentWeather = currentWeather,
     )
     SecondaryMetricsBlock(currentWeather = currentWeather)
+    HourlyForecastSection(hourlyForecast = hourlyForecast)
     Button(onClick = onManageCitiesClick) {
         Text(text = localizedStringResource(R.string.home_manage_saved_cities))
     }
@@ -261,6 +268,74 @@ private fun MetricCard(
     }
 }
 
+@Composable
+private fun HourlyForecastSection(
+    hourlyForecast: List<HourlyForecast>,
+) {
+    Text(
+        text = localizedStringResource(R.string.home_hourly_title),
+        style = MaterialTheme.typography.titleLarge,
+    )
+    if (hourlyForecast.isEmpty()) {
+        Text(
+            text = localizedStringResource(R.string.home_hourly_empty),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(end = 8.dp),
+    ) {
+        items(
+            items = hourlyForecast.take(24),
+            key = { item -> item.forecastTime },
+        ) { hour ->
+            HourlyForecastCard(hourlyForecast = hour)
+        }
+    }
+}
+
+@Composable
+private fun HourlyForecastCard(
+    hourlyForecast: HourlyForecast,
+) {
+    Card {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = hourlyForecast.formattedForecastTime(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = localizedStringResource(
+                    R.string.home_hero_temperature,
+                    hourlyForecast.temperature,
+                ),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = hourlyForecast.conditionText,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = localizedStringResource(
+                    R.string.home_hourly_pop,
+                    hourlyForecast.precipitationProbability,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 private fun cityRegionLine(city: City): String {
     return listOf(city.adm1, city.country)
         .filter { it.isNotBlank() }
@@ -275,4 +350,13 @@ private fun CurrentWeather.formattedObservationTime(): String {
                 .withLocale(Locale.getDefault()),
         )
     }.getOrDefault(observationTime)
+}
+
+private fun HourlyForecast.formattedForecastTime(): String {
+    return runCatching {
+        OffsetDateTime.parse(forecastTime).format(
+            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+                .withLocale(Locale.getDefault()),
+        )
+    }.getOrDefault(forecastTime)
 }

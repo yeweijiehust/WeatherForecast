@@ -3,11 +3,14 @@ package io.github.yeweijiehust.weatherforecast.feature.home
 import com.google.common.truth.Truth.assertThat
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
+import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveCurrentWeatherUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDefaultCityUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveHourlyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshCurrentWeatherUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshHourlyForecastUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -48,9 +51,11 @@ class HomeViewModelTest {
     fun state_exposesCurrentWeatherContentWhenCacheExists() = runTest {
         val defaultCity = sampleCity()
         val cachedWeather = sampleCurrentWeather(cityId = defaultCity.id)
+        val cachedHourly = listOf(sampleHourlyForecast(cityId = defaultCity.id))
         val viewModel = createViewModel(
             defaultCity = defaultCity,
             currentWeather = cachedWeather,
+            hourlyForecast = cachedHourly,
         )
 
         dispatcher.scheduler.advanceUntilIdle()
@@ -59,6 +64,28 @@ class HomeViewModelTest {
             HomeState.Content(
                 city = defaultCity,
                 currentWeather = cachedWeather,
+                hourlyForecast = cachedHourly,
+            ),
+        )
+    }
+
+    @Test
+    fun state_exposesCurrentWeatherContentWhenHourlyCacheIsEmpty() = runTest {
+        val defaultCity = sampleCity()
+        val cachedWeather = sampleCurrentWeather(cityId = defaultCity.id)
+        val viewModel = createViewModel(
+            defaultCity = defaultCity,
+            currentWeather = cachedWeather,
+            hourlyForecast = emptyList(),
+        )
+
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.state).isEqualTo(
+            HomeState.Content(
+                city = defaultCity,
+                currentWeather = cachedWeather,
+                hourlyForecast = emptyList(),
             ),
         )
     }
@@ -80,10 +107,12 @@ class HomeViewModelTest {
     private fun createViewModel(
         defaultCity: City?,
         currentWeather: CurrentWeather? = null,
+        hourlyForecast: List<HourlyForecast> = emptyList(),
         refreshFailure: Throwable? = null,
     ): HomeViewModel {
         val weatherRepository = FakeWeatherRepository(
             currentWeather = currentWeather,
+            hourlyForecast = hourlyForecast,
             refreshFailure = refreshFailure,
         )
         return HomeViewModel(
@@ -91,7 +120,9 @@ class HomeViewModelTest {
                 cityRepository = FakeCityRepository(defaultCity = defaultCity),
             ),
             observeCurrentWeatherUseCase = ObserveCurrentWeatherUseCase(weatherRepository),
+            observeHourlyForecastUseCase = ObserveHourlyForecastUseCase(weatherRepository),
             refreshCurrentWeatherUseCase = RefreshCurrentWeatherUseCase(weatherRepository),
+            refreshHourlyForecastUseCase = RefreshHourlyForecastUseCase(weatherRepository),
         )
     }
 
@@ -128,6 +159,22 @@ class HomeViewModelTest {
         )
     }
 
+    private fun sampleHourlyForecast(cityId: String): HourlyForecast {
+        return HourlyForecast(
+            cityId = cityId,
+            forecastTime = "2026-04-08T16:00+08:00",
+            temperature = "24",
+            conditionText = "Cloudy",
+            conditionIcon = "101",
+            precipitationProbability = "20",
+            precipitation = "0.0",
+            windDirection = "South",
+            windScale = "2",
+            windSpeed = "13",
+            fetchedAtEpochMillis = 100L,
+        )
+    }
+
     private class FakeCityRepository(
         defaultCity: City?,
     ) : CityRepository {
@@ -148,14 +195,20 @@ class HomeViewModelTest {
 
     private class FakeWeatherRepository(
         currentWeather: CurrentWeather?,
+        hourlyForecast: List<HourlyForecast>,
         private val refreshFailure: Throwable?,
     ) : WeatherRepository {
         private val currentWeatherFlow = MutableStateFlow(currentWeather)
+        private val hourlyForecastFlow = MutableStateFlow(hourlyForecast)
 
         override fun observeCurrentWeather(cityId: String): Flow<CurrentWeather?> = currentWeatherFlow
 
         override suspend fun refreshCurrentWeather(cityId: String) {
             refreshFailure?.let { throw it }
         }
+
+        override fun observeHourlyForecast(cityId: String): Flow<List<HourlyForecast>> = hourlyForecastFlow
+
+        override suspend fun refreshHourlyForecast(cityId: String) = Unit
     }
 }

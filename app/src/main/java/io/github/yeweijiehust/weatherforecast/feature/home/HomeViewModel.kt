@@ -6,12 +6,17 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveCurrentWeatherUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDefaultCityUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveHourlyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshCurrentWeatherUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshHourlyForecastUseCase
 import javax.inject.Inject
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -19,7 +24,9 @@ import kotlinx.coroutines.launch
 class HomeViewModel @Inject constructor(
     observeDefaultCityUseCase: ObserveDefaultCityUseCase,
     private val observeCurrentWeatherUseCase: ObserveCurrentWeatherUseCase,
+    private val observeHourlyForecastUseCase: ObserveHourlyForecastUseCase,
     private val refreshCurrentWeatherUseCase: RefreshCurrentWeatherUseCase,
+    private val refreshHourlyForecastUseCase: RefreshHourlyForecastUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -41,26 +48,37 @@ class HomeViewModel @Inject constructor(
     private fun observeCityWeather(city: City) {
         _uiState.value = HomeUiState(state = HomeState.Loading(city))
         currentWeatherObservationJob = viewModelScope.launch {
-            observeCurrentWeatherUseCase(city.id).collect { currentWeather ->
+            combine(
+                observeCurrentWeatherUseCase(city.id),
+                observeHourlyForecastUseCase(city.id),
+            ) { currentWeather, hourlyForecast ->
+                currentWeather to hourlyForecast
+            }.collect { (currentWeather, hourlyForecast) ->
                 if (currentWeather != null) {
                     _uiState.value = HomeUiState(
                         state = HomeState.Content(
                             city = city,
                             currentWeather = currentWeather,
+                            hourlyForecast = hourlyForecast,
                         ),
                     )
                 }
             }
         }
         viewModelScope.launch {
-            runCatching {
-                refreshCurrentWeatherUseCase(city.id)
-            }.onFailure {
-                if (!hasContentFor(city.id)) {
-                    _uiState.value = HomeUiState(state = HomeState.ErrorNoCache(city))
-                }
+            val currentRefresh = refreshCurrentAndHourlyWeather(city.id)
+            if (currentRefresh.isFailure && !hasContentFor(city.id)) {
+                _uiState.value = HomeUiState(state = HomeState.ErrorNoCache(city))
             }
         }
+    }
+
+    private suspend fun refreshCurrentAndHourlyWeather(cityId: String): Result<Unit> = coroutineScope {
+        val currentRefresh = async { runCatching { refreshCurrentWeatherUseCase(cityId) } }
+        val hourlyRefresh = async { runCatching { refreshHourlyForecastUseCase(cityId) } }
+        val currentResult = currentRefresh.await()
+        hourlyRefresh.await()
+        currentResult
     }
 
     private fun hasContentFor(cityId: String): Boolean {

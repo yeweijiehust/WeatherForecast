@@ -2,10 +2,12 @@ package io.github.yeweijiehust.weatherforecast.data.repository
 
 import io.github.yeweijiehust.weatherforecast.data.local.mapper.toDomain
 import io.github.yeweijiehust.weatherforecast.data.local.source.CurrentWeatherLocalDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.HourlyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.remote.api.WeatherApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import io.github.yeweijiehust.weatherforecast.data.remote.mapper.toLocalModel
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
+import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
 import javax.inject.Inject
@@ -19,6 +21,7 @@ class QWeatherWeatherRepository @Inject constructor(
     private val weatherApiService: WeatherApiService,
     private val qWeatherConfig: QWeatherConfig,
     private val currentWeatherLocalDataSource: CurrentWeatherLocalDataSource,
+    private val hourlyForecastLocalDataSource: HourlyForecastLocalDataSource,
     private val settingsRepository: SettingsRepository,
 ) : WeatherRepository {
     override fun observeCurrentWeather(cityId: String): Flow<CurrentWeather?> {
@@ -55,6 +58,49 @@ class QWeatherWeatherRepository @Inject constructor(
                 language = settings.language.storageValue,
                 unitSystem = settings.unitSystem.storageValue,
             ),
+        )
+    }
+
+    override fun observeHourlyForecast(cityId: String): Flow<List<HourlyForecast>> {
+        return settingsRepository.observeAppSettings().flatMapLatest { settings ->
+            hourlyForecastLocalDataSource.observeHourlyForecast(
+                cityId = cityId,
+                language = settings.language.storageValue,
+                unitSystem = settings.unitSystem.storageValue,
+            )
+        }.map { localModels ->
+            localModels.map { localModel -> localModel.toDomain() }
+        }
+    }
+
+    override suspend fun refreshHourlyForecast(cityId: String) {
+        check(qWeatherConfig.isConfigured) {
+            "Weather API is not configured. Add api_key and api_host to local.properties."
+        }
+
+        val settings = settingsRepository.getCurrentSettings()
+        val response = weatherApiService.getHourlyForecast(
+            locationId = cityId,
+            language = settings.language.apiCode,
+            unit = settings.unitSystem.apiCode,
+        )
+        check(response.code == SUCCESS_CODE && response.hourly != null) {
+            "Hourly forecast request failed with code ${response.code}."
+        }
+
+        val fetchedAt = System.currentTimeMillis()
+        hourlyForecastLocalDataSource.replaceHourlyForecast(
+            cityId = cityId,
+            language = settings.language.storageValue,
+            unitSystem = settings.unitSystem.storageValue,
+            hourlyForecast = response.hourly.map { hourlyDto ->
+                hourlyDto.toLocalModel(
+                    cityId = cityId,
+                    fetchedAtEpochMillis = fetchedAt,
+                    language = settings.language.storageValue,
+                    unitSystem = settings.unitSystem.storageValue,
+                )
+            },
         )
     }
 

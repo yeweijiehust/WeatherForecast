@@ -7,6 +7,7 @@ import io.github.yeweijiehust.weatherforecast.core.localization.WeatherForecastL
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
+import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
 import org.junit.Rule
 import org.junit.Test
@@ -68,6 +69,21 @@ class HomeScreenTest {
                                     visibility = "16",
                                     fetchedAtEpochMillis = 100L,
                                 ),
+                                hourlyForecast = listOf(
+                                    HourlyForecast(
+                                        cityId = "101020100",
+                                        forecastTime = "2026-04-08T16:00+08:00",
+                                        temperature = "24",
+                                        conditionText = "Cloudy",
+                                        conditionIcon = "101",
+                                        precipitationProbability = "20",
+                                        precipitation = "0.0",
+                                        windDirection = "South",
+                                        windScale = "2",
+                                        windSpeed = "13",
+                                        fetchedAtEpochMillis = 100L,
+                                    ),
+                                ),
                             ),
                         ),
                         onManageCitiesClick = {},
@@ -83,5 +99,8 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("Feels like 28°").assertIsDisplayed()
         composeTestRule.onNodeWithText("Humidity").assertIsDisplayed()
         composeTestRule.onNodeWithText("65%").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Next 24 Hours").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cloudy").assertIsDisplayed()
+        composeTestRule.onNodeWithText("POP 20%").assertIsDisplayed()
     }
 }
