@@ -106,31 +106,50 @@ class HomeViewModel @Inject constructor(
     private fun triggerRefresh(city: City) {
         if (refreshJob?.isActive == true) return
         refreshJob = viewModelScope.launch {
-            latestSnapshot?.let { snapshot ->
+            val snapshotBeforeRefresh = latestSnapshotFor(city.id)
+            val hadHourlyCache = snapshotBeforeRefresh?.hourlyForecast?.isNotEmpty() == true
+            val hadDailyCache = snapshotBeforeRefresh?.dailyForecast?.isNotEmpty() == true
+
+            snapshotBeforeRefresh?.let { snapshot ->
                 isRefreshing = true
                 _uiState.value = HomeUiState(
                     state = HomeState.Refreshing(snapshot),
                 )
             }
 
-            val currentRefresh = refreshCurrentHourlyDailyWeather(city.id)
+            val refreshOutcome = refreshCurrentHourlyDailyWeather(city.id)
             isRefreshing = false
-            if (currentRefresh.isSuccess) {
-                isStaleCache = false
-                latestSnapshot?.let { snapshot ->
+            when {
+                !refreshOutcome.currentSuccess && latestSnapshotFor(city.id) != null -> {
+                    isStaleCache = true
                     _uiState.value = HomeUiState(
-                        state = HomeState.Content(snapshot),
+                        state = HomeState.ContentWithStaleCache(
+                            snapshot = latestSnapshotFor(city.id)!!,
+                        ),
                     )
                 }
-            } else if (latestSnapshotFor(city.id) != null) {
-                isStaleCache = true
-                _uiState.value = HomeUiState(
-                    state = HomeState.ContentWithStaleCache(
-                        snapshot = latestSnapshotFor(city.id)!!,
-                    ),
-                )
-            } else {
-                _uiState.value = HomeUiState(state = HomeState.ErrorNoCache(city))
+                !refreshOutcome.currentSuccess -> {
+                    _uiState.value = HomeUiState(state = HomeState.ErrorNoCache(city))
+                }
+                refreshOutcome.hasForecastFailureWithCachedData(
+                    hadHourlyCache = hadHourlyCache,
+                    hadDailyCache = hadDailyCache,
+                ) && latestSnapshotFor(city.id) != null -> {
+                    isStaleCache = true
+                    _uiState.value = HomeUiState(
+                        state = HomeState.ContentWithStaleCache(
+                            snapshot = latestSnapshotFor(city.id)!!,
+                        ),
+                    )
+                }
+                else -> {
+                    isStaleCache = false
+                    latestSnapshot?.let { snapshot ->
+                        _uiState.value = HomeUiState(
+                            state = HomeState.Content(snapshot),
+                        )
+                    }
+                }
             }
         }
     }
@@ -152,13 +171,27 @@ class HomeViewModel @Inject constructor(
         }.maxOrNull() ?: currentWeather.fetchedAtEpochMillis
     }
 
-    private suspend fun refreshCurrentHourlyDailyWeather(cityId: String): Result<Unit> = coroutineScope {
+    private suspend fun refreshCurrentHourlyDailyWeather(cityId: String): RefreshOutcome = coroutineScope {
         val currentRefresh = async { runCatching { refreshCurrentWeatherUseCase(cityId) } }
         val hourlyRefresh = async { runCatching { refreshHourlyForecastUseCase(cityId) } }
         val dailyRefresh = async { runCatching { refreshDailyForecastUseCase(cityId) } }
-        val currentResult = currentRefresh.await()
-        hourlyRefresh.await()
-        dailyRefresh.await()
-        currentResult
+        RefreshOutcome(
+            currentSuccess = currentRefresh.await().isSuccess,
+            hourlySuccess = hourlyRefresh.await().isSuccess,
+            dailySuccess = dailyRefresh.await().isSuccess,
+        )
+    }
+
+    private data class RefreshOutcome(
+        val currentSuccess: Boolean,
+        val hourlySuccess: Boolean,
+        val dailySuccess: Boolean,
+    ) {
+        fun hasForecastFailureWithCachedData(
+            hadHourlyCache: Boolean,
+            hadDailyCache: Boolean,
+        ): Boolean {
+            return (!hourlySuccess && hadHourlyCache) || (!dailySuccess && hadDailyCache)
+        }
     }
 }

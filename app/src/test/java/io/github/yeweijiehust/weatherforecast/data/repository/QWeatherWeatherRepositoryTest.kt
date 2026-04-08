@@ -253,6 +253,43 @@ class QWeatherWeatherRepositoryTest {
     }
 
     @Test
+    fun refreshHourlyForecast_keepsCachedDataWhenRequestFails() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        val localDataSource = FakeHourlyForecastLocalDataSource(
+            hourlyForecast = listOf(sampleHourlyForecastLocal()),
+        )
+        coEvery {
+            weatherApiService.getHourlyForecast(
+                locationId = "101020100",
+                language = "en",
+                unit = "m",
+            )
+        } returns HourlyForecastResponseDto(
+            code = "500",
+            hourly = null,
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            hourlyForecastLocalDataSource = localDataSource,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val failure = runCatching {
+            repository.refreshHourlyForecast("101020100")
+        }.exceptionOrNull()
+        val observed = repository.observeHourlyForecast("101020100").first()
+
+        assertThat(failure).isInstanceOf(IllegalStateException::class.java)
+        assertThat(observed).hasSize(1)
+        assertThat(observed.first().temperature).isEqualTo("24")
+    }
+
+    @Test
     fun refreshDailyForecast_requestsUsingCurrentSettingsAndCachesResult() = runTest {
         val weatherApiService = mockk<WeatherApiService>()
         val localDataSource = FakeDailyForecastLocalDataSource()
@@ -303,6 +340,43 @@ class QWeatherWeatherRepositoryTest {
         assertThat(localDataSource.lastReplaceUnitSystem).isEqualTo("imperial")
         assertThat(localDataSource.replacedDailyForecast).hasSize(1)
         assertThat(localDataSource.replacedDailyForecast?.first()?.tempMax).isEqualTo("86")
+    }
+
+    @Test
+    fun refreshDailyForecast_keepsCachedDataWhenRequestFails() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        val localDataSource = FakeDailyForecastLocalDataSource(
+            dailyForecast = listOf(sampleDailyForecastLocal()),
+        )
+        coEvery {
+            weatherApiService.getDailyForecast(
+                locationId = "101020100",
+                language = "en",
+                unit = "m",
+            )
+        } returns DailyForecastResponseDto(
+            code = "500",
+            daily = null,
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            dailyForecastLocalDataSource = localDataSource,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val failure = runCatching {
+            repository.refreshDailyForecast("101020100")
+        }.exceptionOrNull()
+        val observed = repository.observeDailyForecast("101020100").first()
+
+        assertThat(failure).isInstanceOf(IllegalStateException::class.java)
+        assertThat(observed).hasSize(1)
+        assertThat(observed.first().tempMax).isEqualTo("30")
     }
 
     @Test

@@ -124,6 +124,49 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun state_becomesContentWithStaleCacheWhenHourlyRefreshFailsWithHourlyCache() = runTest {
+        val defaultCity = sampleCity()
+        val repository = FakeWeatherRepository(
+            currentWeather = sampleCurrentWeather(defaultCity.id),
+            hourlyForecast = listOf(sampleHourlyForecast(defaultCity.id)),
+            dailyForecast = listOf(sampleDailyForecast(defaultCity.id)),
+        )
+        val viewModel = createViewModel(
+            defaultCity = defaultCity,
+            weatherRepository = repository,
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        repository.failNextHourlyRefresh = true
+        viewModel.onPullToRefresh()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.state)
+            .isInstanceOf(HomeState.ContentWithStaleCache::class.java)
+    }
+
+    @Test
+    fun state_staysContentWhenHourlyRefreshFailsWithoutHourlyCache() = runTest {
+        val defaultCity = sampleCity()
+        val repository = FakeWeatherRepository(
+            currentWeather = sampleCurrentWeather(defaultCity.id),
+            hourlyForecast = emptyList(),
+            dailyForecast = listOf(sampleDailyForecast(defaultCity.id)),
+        )
+        val viewModel = createViewModel(
+            defaultCity = defaultCity,
+            weatherRepository = repository,
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+
+        repository.failNextHourlyRefresh = true
+        viewModel.onPullToRefresh()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.state).isInstanceOf(HomeState.Content::class.java)
+    }
+
+    @Test
     fun state_becomesErrorWhenRefreshFailsWithoutCache() = runTest {
         val defaultCity = sampleCity()
         val repository = FakeWeatherRepository(
@@ -248,6 +291,8 @@ class HomeViewModelTest {
         hourlyForecast: List<HourlyForecast> = emptyList(),
         dailyForecast: List<DailyForecast> = emptyList(),
         var failNextCurrentRefresh: Boolean = false,
+        var failNextHourlyRefresh: Boolean = false,
+        var failNextDailyRefresh: Boolean = false,
         var refreshDelayMillis: Long = 0L,
     ) : WeatherRepository {
         private val currentWeatherFlow = MutableStateFlow(currentWeather)
@@ -268,10 +313,20 @@ class HomeViewModelTest {
 
         override fun observeHourlyForecast(cityId: String): Flow<List<HourlyForecast>> = hourlyForecastFlow
 
-        override suspend fun refreshHourlyForecast(cityId: String) = Unit
+        override suspend fun refreshHourlyForecast(cityId: String) {
+            if (failNextHourlyRefresh) {
+                failNextHourlyRefresh = false
+                throw IllegalStateException("hourly-boom")
+            }
+        }
 
         override fun observeDailyForecast(cityId: String): Flow<List<DailyForecast>> = dailyForecastFlow
 
-        override suspend fun refreshDailyForecast(cityId: String) = Unit
+        override suspend fun refreshDailyForecast(cityId: String) {
+            if (failNextDailyRefresh) {
+                failNextDailyRefresh = false
+                throw IllegalStateException("daily-boom")
+            }
+        }
     }
 }

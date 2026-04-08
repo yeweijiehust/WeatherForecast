@@ -63,6 +63,7 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("Cloudy").assertIsDisplayed()
         composeTestRule.onNodeWithText("POP 20%").assertIsDisplayed()
         composeTestRule.onNodeWithText("Next 7 Days").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Last updated", substring = true).assertIsDisplayed()
     }
 
     @Test
