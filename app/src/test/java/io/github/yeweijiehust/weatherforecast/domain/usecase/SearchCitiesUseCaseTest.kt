@@ -4,22 +4,27 @@ import com.google.common.truth.Truth.assertThat
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.SearchLanguageProvider
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class SearchCitiesUseCaseTest {
     @Test
     fun invoke_returnsEmptyWithoutCallingRepository_whenQueryIsBlank() = runTest {
-        val repository = FakeCityRepository()
+        val repository = mockk<CityRepository>()
+        val searchLanguageProvider = mockk<SearchLanguageProvider>()
         val useCase = SearchCitiesUseCase(
             cityRepository = repository,
-            searchLanguageProvider = FakeSearchLanguageProvider(language = "zh"),
+            searchLanguageProvider = searchLanguageProvider,
         )
 
         val result = useCase("   ")
 
         assertThat(result).isEmpty()
-        assertThat(repository.recordedQuery).isNull()
+        coVerify(exactly = 0) { repository.searchCities(any(), any()) }
     }
 
     @Test
@@ -36,38 +41,28 @@ class SearchCitiesUseCaseTest {
                 timeZone = "Asia/Shanghai",
             ),
         )
-        val repository = FakeCityRepository(result = expectedCities)
+        val repository = mockk<CityRepository>()
+        val searchLanguageProvider = mockk<SearchLanguageProvider>()
+        every { searchLanguageProvider.currentLanguage() } returns "zh"
+        coEvery {
+            repository.searchCities(
+                query = "Beijing",
+                language = "zh",
+            )
+        } returns expectedCities
         val useCase = SearchCitiesUseCase(
             cityRepository = repository,
-            searchLanguageProvider = FakeSearchLanguageProvider(language = "zh"),
+            searchLanguageProvider = searchLanguageProvider,
         )
 
         val result = useCase("  Beijing  ")
 
         assertThat(result).isEqualTo(expectedCities)
-        assertThat(repository.recordedQuery).isEqualTo("Beijing")
-        assertThat(repository.recordedLanguage).isEqualTo("zh")
-    }
-
-    private class FakeCityRepository(
-        private val result: List<City> = emptyList(),
-    ) : CityRepository {
-        var recordedQuery: String? = null
-        var recordedLanguage: String? = null
-
-        override suspend fun searchCities(
-            query: String,
-            language: String,
-        ): List<City> {
-            recordedQuery = query
-            recordedLanguage = language
-            return result
+        coVerify(exactly = 1) {
+            repository.searchCities(
+                query = "Beijing",
+                language = "zh",
+            )
         }
-    }
-
-    private class FakeSearchLanguageProvider(
-        private val language: String,
-    ) : SearchLanguageProvider {
-        override fun currentLanguage(): String = language
     }
 }

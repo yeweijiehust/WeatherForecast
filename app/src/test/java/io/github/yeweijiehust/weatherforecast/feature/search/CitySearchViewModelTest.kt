@@ -3,10 +3,9 @@ package io.github.yeweijiehust.weatherforecast.feature.search
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import io.github.yeweijiehust.weatherforecast.domain.model.City
-import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
-import io.github.yeweijiehust.weatherforecast.domain.repository.SearchLanguageProvider
 import io.github.yeweijiehust.weatherforecast.domain.usecase.SearchCitiesUseCase
-import kotlinx.coroutines.CompletableDeferred
+import io.mockk.coEvery
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -40,7 +39,6 @@ class CitySearchViewModelTest {
 
     @Test
     fun search_emitsSearchingThenResults() = runTest {
-        val gate = CompletableDeferred<Unit>()
         val expectedCities = listOf(
             City(
                 id = "101020100",
@@ -54,12 +52,9 @@ class CitySearchViewModelTest {
             ),
         )
         val viewModel = createViewModel(
-            repository = FakeCityRepository(
-                onSearch = { _, _ ->
-                    gate.await()
-                    expectedCities
-                },
-            ),
+            searchCitiesUseCase = mockk<SearchCitiesUseCase>().also { useCase ->
+                coEvery { useCase.invoke("Shanghai") } returns expectedCities
+            },
         )
         viewModel.onQueryChanged("Shanghai")
 
@@ -70,8 +65,6 @@ class CitySearchViewModelTest {
             testDispatcher.scheduler.runCurrent()
             assertThat(awaitItem().resultState).isEqualTo(CitySearchResultState.Searching)
 
-            gate.complete(Unit)
-            testDispatcher.scheduler.runCurrent()
             assertThat(awaitItem().resultState).isEqualTo(
                 CitySearchResultState.Results(expectedCities),
             )
@@ -83,7 +76,9 @@ class CitySearchViewModelTest {
     @Test
     fun search_emitsEmptyResultWhenRepositoryReturnsNoCities() = runTest {
         val viewModel = createViewModel(
-            repository = FakeCityRepository(onSearch = { _, _ -> emptyList() }),
+            searchCitiesUseCase = mockk<SearchCitiesUseCase>().also { useCase ->
+                coEvery { useCase.invoke("Atlantis") } returns emptyList()
+            },
         )
         viewModel.onQueryChanged("Atlantis")
 
@@ -98,9 +93,9 @@ class CitySearchViewModelTest {
     @Test
     fun search_emitsErrorWhenRepositoryFails() = runTest {
         val viewModel = createViewModel(
-            repository = FakeCityRepository(
-                onSearch = { _, _ -> throw IllegalStateException("boom") },
-            ),
+            searchCitiesUseCase = mockk<SearchCitiesUseCase>().also { useCase ->
+                coEvery { useCase.invoke("Nanjing") } throws IllegalStateException("boom")
+            },
         )
         viewModel.onQueryChanged("Nanjing")
 
@@ -127,24 +122,10 @@ class CitySearchViewModelTest {
     }
 
     private fun createViewModel(
-        repository: CityRepository = FakeCityRepository(),
+        searchCitiesUseCase: SearchCitiesUseCase = mockk<SearchCitiesUseCase>().also { useCase ->
+            coEvery { useCase.invoke(any()) } returns emptyList()
+        },
     ): CitySearchViewModel {
-        return CitySearchViewModel(
-            searchCitiesUseCase = SearchCitiesUseCase(
-                cityRepository = repository,
-                searchLanguageProvider = object : SearchLanguageProvider {
-                    override fun currentLanguage(): String = "en"
-                },
-            ),
-        )
-    }
-
-    private class FakeCityRepository(
-        private val onSearch: suspend (String, String) -> List<City> = { _, _ -> emptyList() },
-    ) : CityRepository {
-        override suspend fun searchCities(
-            query: String,
-            language: String,
-        ): List<City> = onSearch(query, language)
+        return CitySearchViewModel(searchCitiesUseCase = searchCitiesUseCase)
     }
 }

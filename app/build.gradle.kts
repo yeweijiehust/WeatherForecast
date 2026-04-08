@@ -41,6 +41,7 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Generates io.github.yeweijiehust.weatherforecast.BuildConfig for app code.
         buildConfigField("String", "QWEATHER_API_KEY", buildConfigString(localProperty("api_key")))
         buildConfigField("String", "QWEATHER_API_HOST", buildConfigString(localProperty("api_host")))
     }
@@ -65,6 +66,7 @@ android {
     }
     buildFeatures {
         compose = true
+        // Required so BuildConfig is generated in this app module.
         buildConfig = true
     }
     testOptions {
