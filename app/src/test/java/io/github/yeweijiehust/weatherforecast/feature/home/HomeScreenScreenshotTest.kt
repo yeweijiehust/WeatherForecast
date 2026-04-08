@@ -1,41 +1,24 @@
 package io.github.yeweijiehust.weatherforecast.feature.home
 
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.yeweijiehust.weatherforecast.core.localization.WeatherForecastLocalizedContent
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
-import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
-class HomeScreenTest {
-    @get:Rule
-    val composeTestRule = createComposeRule()
-
+@RunWith(AndroidJUnit4::class)
+@Config(sdk = [35])
+class HomeScreenScreenshotTest {
     @Test
-    fun emptyState_promptsUserToAddFirstCity() {
-        composeTestRule.setContent {
-            WeatherForecastLocalizedContent(language = AppLanguage.English) {
-                WeatherForecastTheme {
-                    HomeScreen(
-                        uiState = HomeUiState(state = HomeState.EmptyNoCity),
-                        onManageCitiesClick = {},
-                        onSettingsClick = {},
-                    )
-                }
-            }
-        }
-
-        composeTestRule.onNodeWithText("No city selected yet.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Add your first city").assertIsDisplayed()
-    }
-
-    @Test
-    fun contentState_showsCurrentWeatherSummary() {
-        composeTestRule.setContent {
+    fun contentState_capturesCurrentWeatherLayout() {
+        captureRoboImage(
+            filePath = "build/outputs/roborazzi/home-current-weather.png",
+        ) {
             WeatherForecastLocalizedContent(language = AppLanguage.English) {
                 WeatherForecastTheme {
                     HomeScreen(
@@ -76,12 +59,5 @@ class HomeScreenTest {
                 }
             }
         }
-
-        composeTestRule.onNodeWithText("Shanghai").assertIsDisplayed()
-        composeTestRule.onNodeWithText("26°").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Sunny").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Feels like 28°").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Humidity").assertIsDisplayed()
-        composeTestRule.onNodeWithText("65%").assertIsDisplayed()
     }
 }

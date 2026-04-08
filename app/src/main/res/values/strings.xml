@@ -19,6 +19,15 @@
     <string name="home_current_city_title">Current city</string>
     <string name="home_manage_saved_cities">Manage saved cities</string>
     <string name="home_open_settings">Open Settings Screen</string>
+    <string name="home_loading">Loading weather…</string>
+    <string name="home_error_no_cache">We couldn\'t load current weather for this city.</string>
+    <string name="home_hero_temperature">%1$s°</string>
+    <string name="home_feels_like">Feels like %1$s°</string>
+    <string name="home_observed_at">Observed at %1$s</string>
+    <string name="home_label_humidity">Humidity</string>
+    <string name="home_label_wind">Wind</string>
+    <string name="home_label_precipitation">Precipitation</string>
+    <string name="home_label_visibility">Visibility</string>
 
     <string name="search_title">Find a city</string>
     <string name="search_description">Search by city name to see clear, disambiguated results.</string>

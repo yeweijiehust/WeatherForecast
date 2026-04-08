@@ -7,6 +7,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.github.yeweijiehust.weatherforecast.data.local.dao.CurrentWeatherDao
 import io.github.yeweijiehust.weatherforecast.data.local.dao.SavedCityDao
 import io.github.yeweijiehust.weatherforecast.data.local.db.WeatherForecastDatabase
 import javax.inject.Singleton
@@ -23,11 +24,18 @@ object StorageModule {
             context,
             WeatherForecastDatabase::class.java,
             "weather_forecast.db",
-        ).build()
+        )
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
     }
 
     @Provides
     fun provideSavedCityDao(
         database: WeatherForecastDatabase,
     ): SavedCityDao = database.savedCityDao()
+
+    @Provides
+    fun provideCurrentWeatherDao(
+        database: WeatherForecastDatabase,
+    ): CurrentWeatherDao = database.currentWeatherDao()
 }

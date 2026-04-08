@@ -5,6 +5,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.yeweijiehust.weatherforecast.data.remote.api.GeoApiService
+import io.github.yeweijiehust.weatherforecast.data.remote.api.WeatherApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import javax.inject.Singleton
 import kotlinx.serialization.json.Json
@@ -71,4 +72,10 @@ object NetworkModule {
     fun provideGeoApiService(
         retrofit: Retrofit,
     ): GeoApiService = retrofit.create(GeoApiService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideWeatherApiService(
+        retrofit: Retrofit,
+    ): WeatherApiService = retrofit.create(WeatherApiService::class.java)
 }

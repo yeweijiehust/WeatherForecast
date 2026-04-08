@@ -5,15 +5,19 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.yeweijiehust.weatherforecast.data.local.source.AppSettingsPreferencesDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.CurrentWeatherLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.DefaultCityPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.SavedCityLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.WeatherCacheCleaner
 import io.github.yeweijiehust.weatherforecast.data.remote.api.GeoApiService
+import io.github.yeweijiehust.weatherforecast.data.remote.api.WeatherApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import io.github.yeweijiehust.weatherforecast.data.repository.DefaultSettingsRepository
 import io.github.yeweijiehust.weatherforecast.data.repository.QWeatherCityRepository
+import io.github.yeweijiehust.weatherforecast.data.repository.QWeatherWeatherRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
 import javax.inject.Singleton
 
 @Module
@@ -41,5 +45,19 @@ object RepositoryModule {
     ): SettingsRepository = DefaultSettingsRepository(
         appSettingsPreferencesDataSource = appSettingsPreferencesDataSource,
         weatherCacheCleaner = weatherCacheCleaner,
+    )
+
+    @Provides
+    @Singleton
+    fun provideWeatherRepository(
+        weatherApiService: WeatherApiService,
+        qWeatherConfig: QWeatherConfig,
+        currentWeatherLocalDataSource: CurrentWeatherLocalDataSource,
+        settingsRepository: SettingsRepository,
+    ): WeatherRepository = QWeatherWeatherRepository(
+        weatherApiService = weatherApiService,
+        qWeatherConfig = qWeatherConfig,
+        currentWeatherLocalDataSource = currentWeatherLocalDataSource,
+        settingsRepository = settingsRepository,
     )
 }

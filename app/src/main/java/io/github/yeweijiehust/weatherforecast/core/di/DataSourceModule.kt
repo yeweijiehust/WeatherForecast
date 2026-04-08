@@ -5,10 +5,12 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.yeweijiehust.weatherforecast.data.local.source.AppSettingsPreferencesDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.CurrentWeatherLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.DataStoreAppSettingsPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.DataStoreDefaultCityPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.DefaultCityPreferencesDataSource
-import io.github.yeweijiehust.weatherforecast.data.local.source.NoOpWeatherCacheCleaner
+import io.github.yeweijiehust.weatherforecast.data.local.source.RoomCurrentWeatherLocalDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.RoomWeatherCacheCleaner
 import io.github.yeweijiehust.weatherforecast.data.local.source.RoomSavedCityLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.SavedCityLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.WeatherCacheCleaner
@@ -32,7 +34,12 @@ abstract class DataSourceModule {
     ): AppSettingsPreferencesDataSource
 
     @Binds
+    abstract fun bindCurrentWeatherLocalDataSource(
+        roomCurrentWeatherLocalDataSource: RoomCurrentWeatherLocalDataSource,
+    ): CurrentWeatherLocalDataSource
+
+    @Binds
     abstract fun bindWeatherCacheCleaner(
-        noOpWeatherCacheCleaner: NoOpWeatherCacheCleaner,
+        roomWeatherCacheCleaner: RoomWeatherCacheCleaner,
     ): WeatherCacheCleaner
 }

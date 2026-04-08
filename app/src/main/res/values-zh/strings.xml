@@ -19,6 +19,15 @@
     <string name="home_current_city_title">当前城市</string>
     <string name="home_manage_saved_cities">管理已保存城市</string>
     <string name="home_open_settings">打开设置页面</string>
+    <string name="home_loading">正在加载天气…</string>
+    <string name="home_error_no_cache">暂时无法加载当前天气。</string>
+    <string name="home_hero_temperature">%1$s°</string>
+    <string name="home_feels_like">体感 %1$s°</string>
+    <string name="home_observed_at">观测时间 %1$s</string>
+    <string name="home_label_humidity">湿度</string>
+    <string name="home_label_wind">风况</string>
+    <string name="home_label_precipitation">降水</string>
+    <string name="home_label_visibility">能见度</string>
 
     <string name="search_title">查找城市</string>
     <string name="search_description">按城市名称搜索，查看清晰的区分结果。</string>
