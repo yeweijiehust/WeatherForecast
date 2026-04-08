@@ -2,6 +2,7 @@ package io.github.yeweijiehust.weatherforecast.feature.home
 
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
+import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 
 data class HomeUiState(
@@ -19,6 +20,7 @@ sealed interface HomeState {
         val city: City,
         val currentWeather: CurrentWeather,
         val hourlyForecast: List<HourlyForecast>,
+        val dailyForecast: List<DailyForecast>,
     ) : HomeState
 
     data class ErrorNoCache(

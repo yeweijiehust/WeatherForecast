@@ -6,11 +6,13 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.yeweijiehust.weatherforecast.data.local.source.AppSettingsPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.CurrentWeatherLocalDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.DailyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.DataStoreAppSettingsPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.DataStoreDefaultCityPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.DefaultCityPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.HourlyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.RoomCurrentWeatherLocalDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.RoomDailyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.RoomHourlyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.RoomSavedCityLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.RoomWeatherCacheCleaner
@@ -44,6 +46,11 @@ abstract class DataSourceModule {
     abstract fun bindHourlyForecastLocalDataSource(
         roomHourlyForecastLocalDataSource: RoomHourlyForecastLocalDataSource,
     ): HourlyForecastLocalDataSource
+
+    @Binds
+    abstract fun bindDailyForecastLocalDataSource(
+        roomDailyForecastLocalDataSource: RoomDailyForecastLocalDataSource,
+    ): DailyForecastLocalDataSource
 
     @Binds
     abstract fun bindWeatherCacheCleaner(

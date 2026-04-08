@@ -6,6 +6,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.yeweijiehust.weatherforecast.data.local.source.AppSettingsPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.CurrentWeatherLocalDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.DailyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.DefaultCityPreferencesDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.HourlyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.SavedCityLocalDataSource
@@ -55,12 +56,14 @@ object RepositoryModule {
         qWeatherConfig: QWeatherConfig,
         currentWeatherLocalDataSource: CurrentWeatherLocalDataSource,
         hourlyForecastLocalDataSource: HourlyForecastLocalDataSource,
+        dailyForecastLocalDataSource: DailyForecastLocalDataSource,
         settingsRepository: SettingsRepository,
     ): WeatherRepository = QWeatherWeatherRepository(
         weatherApiService = weatherApiService,
         qWeatherConfig = qWeatherConfig,
         currentWeatherLocalDataSource = currentWeatherLocalDataSource,
         hourlyForecastLocalDataSource = hourlyForecastLocalDataSource,
+        dailyForecastLocalDataSource = dailyForecastLocalDataSource,
         settingsRepository = settingsRepository,
     )
 }

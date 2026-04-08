@@ -7,6 +7,7 @@ import io.github.yeweijiehust.weatherforecast.core.localization.WeatherForecastL
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
+import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
 import org.junit.Rule
@@ -84,6 +85,22 @@ class HomeScreenTest {
                                         fetchedAtEpochMillis = 100L,
                                     ),
                                 ),
+                                dailyForecast = listOf(
+                                    DailyForecast(
+                                        cityId = "101020100",
+                                        forecastDate = "2026-04-09",
+                                        tempMax = "30",
+                                        tempMin = "22",
+                                        conditionTextDay = "Windy",
+                                        conditionIconDay = "100",
+                                        precipitationProbability = "10",
+                                        precipitation = "0.0",
+                                        windDirectionDay = "South",
+                                        windScaleDay = "3",
+                                        windSpeedDay = "16",
+                                        fetchedAtEpochMillis = 100L,
+                                    ),
+                                ),
                             ),
                         ),
                         onManageCitiesClick = {},
@@ -102,5 +119,6 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("Next 24 Hours").assertIsDisplayed()
         composeTestRule.onNodeWithText("Cloudy").assertIsDisplayed()
         composeTestRule.onNodeWithText("POP 20%").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Next 7 Days").assertIsDisplayed()
     }
 }

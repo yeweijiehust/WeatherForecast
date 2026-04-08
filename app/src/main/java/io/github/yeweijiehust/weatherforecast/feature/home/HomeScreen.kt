@@ -25,7 +25,9 @@ import io.github.yeweijiehust.weatherforecast.R
 import io.github.yeweijiehust.weatherforecast.core.localization.localizedStringResource
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
+import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -65,6 +67,7 @@ fun HomeScreen(
                 city = state.city,
                 currentWeather = state.currentWeather,
                 hourlyForecast = state.hourlyForecast,
+                dailyForecast = state.dailyForecast,
                 onManageCitiesClick = onManageCitiesClick,
             )
             is HomeState.ErrorNoCache -> ErrorState(
@@ -118,6 +121,7 @@ private fun ContentState(
     city: City,
     currentWeather: CurrentWeather,
     hourlyForecast: List<HourlyForecast>,
+    dailyForecast: List<DailyForecast>,
     onManageCitiesClick: () -> Unit,
 ) {
     CurrentWeatherHeroCard(
@@ -126,6 +130,7 @@ private fun ContentState(
     )
     SecondaryMetricsBlock(currentWeather = currentWeather)
     HourlyForecastSection(hourlyForecast = hourlyForecast)
+    DailyForecastSection(dailyForecast = dailyForecast)
     Button(onClick = onManageCitiesClick) {
         Text(text = localizedStringResource(R.string.home_manage_saved_cities))
     }
@@ -336,6 +341,73 @@ private fun HourlyForecastCard(
     }
 }
 
+@Composable
+private fun DailyForecastSection(
+    dailyForecast: List<DailyForecast>,
+) {
+    Text(
+        text = localizedStringResource(R.string.home_daily_title),
+        style = MaterialTheme.typography.titleLarge,
+    )
+    if (dailyForecast.isEmpty()) {
+        Text(
+            text = localizedStringResource(R.string.home_daily_empty),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        dailyForecast.take(7).forEach { forecast ->
+            DailyForecastCard(dailyForecast = forecast)
+        }
+    }
+}
+
+@Composable
+private fun DailyForecastCard(
+    dailyForecast: DailyForecast,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = dailyForecast.formattedForecastDate(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = dailyForecast.conditionTextDay,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = localizedStringResource(
+                    R.string.home_daily_temp_range,
+                    dailyForecast.tempMax,
+                    dailyForecast.tempMin,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = localizedStringResource(
+                    R.string.home_daily_pop,
+                    dailyForecast.precipitationProbability,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 private fun cityRegionLine(city: City): String {
     return listOf(city.adm1, city.country)
         .filter { it.isNotBlank() }
@@ -359,4 +431,12 @@ private fun HourlyForecast.formattedForecastTime(): String {
                 .withLocale(Locale.getDefault()),
         )
     }.getOrDefault(forecastTime)
+}
+
+private fun DailyForecast.formattedForecastDate(): String {
+    return runCatching {
+        LocalDate.parse(forecastDate).format(
+            DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()),
+        )
+    }.getOrDefault(forecastDate)
 }

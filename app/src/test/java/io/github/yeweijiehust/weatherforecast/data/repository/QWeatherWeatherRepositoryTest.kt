@@ -2,13 +2,17 @@ package io.github.yeweijiehust.weatherforecast.data.repository
 
 import com.google.common.truth.Truth.assertThat
 import io.github.yeweijiehust.weatherforecast.data.local.model.CurrentWeatherLocalModel
-import io.github.yeweijiehust.weatherforecast.data.local.source.CurrentWeatherLocalDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.model.DailyForecastLocalModel
 import io.github.yeweijiehust.weatherforecast.data.local.model.HourlyForecastLocalModel
+import io.github.yeweijiehust.weatherforecast.data.local.source.CurrentWeatherLocalDataSource
+import io.github.yeweijiehust.weatherforecast.data.local.source.DailyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.local.source.HourlyForecastLocalDataSource
 import io.github.yeweijiehust.weatherforecast.data.remote.api.WeatherApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CurrentWeatherDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CurrentWeatherResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.DailyForecastDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.DailyForecastResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResponseDto
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
@@ -68,6 +72,30 @@ class QWeatherWeatherRepositoryTest {
         assertThat(observed).hasSize(1)
         assertThat(observed.first().cityId).isEqualTo("101020100")
         assertThat(observed.first().conditionText).isEqualTo("Cloudy")
+        assertThat(localDataSource.lastObservedLanguage).isEqualTo("en")
+        assertThat(localDataSource.lastObservedUnitSystem).isEqualTo("metric")
+    }
+
+    @Test
+    fun observeDailyForecast_usesSettingsCompatibleCache() = runTest {
+        val localDataSource = FakeDailyForecastLocalDataSource(
+            dailyForecast = listOf(sampleDailyForecastLocal()),
+        )
+        val repository = createRepository(
+            dailyForecastLocalDataSource = localDataSource,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val observed = repository.observeDailyForecast("101020100").first()
+
+        assertThat(observed).hasSize(1)
+        assertThat(observed.first().cityId).isEqualTo("101020100")
+        assertThat(observed.first().conditionTextDay).isEqualTo("Sunny")
         assertThat(localDataSource.lastObservedLanguage).isEqualTo("en")
         assertThat(localDataSource.lastObservedUnitSystem).isEqualTo("metric")
     }
@@ -177,12 +205,66 @@ class QWeatherWeatherRepositoryTest {
     }
 
     @Test
+    fun refreshDailyForecast_requestsUsingCurrentSettingsAndCachesResult() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        val localDataSource = FakeDailyForecastLocalDataSource()
+        coEvery {
+            weatherApiService.getDailyForecast(
+                locationId = "101020100",
+                language = "zh",
+                unit = "i",
+            )
+        } returns DailyForecastResponseDto(
+            code = "200",
+            daily = listOf(
+                DailyForecastDto(
+                    forecastDate = "2026-04-09",
+                    tempMax = "86",
+                    tempMin = "72",
+                    conditionTextDay = "Sunny",
+                    conditionIconDay = "100",
+                    precipitationProbability = "10",
+                    precipitation = "0.0",
+                    windDirectionDay = "South",
+                    windScaleDay = "3",
+                    windSpeedDay = "10",
+                ),
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            dailyForecastLocalDataSource = localDataSource,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.SimplifiedChinese,
+                    unitSystem = UnitSystem.Imperial,
+                ),
+            ),
+        )
+
+        repository.refreshDailyForecast("101020100")
+
+        coVerify(exactly = 1) {
+            weatherApiService.getDailyForecast(
+                locationId = "101020100",
+                language = "zh",
+                unit = "i",
+            )
+        }
+        assertThat(localDataSource.lastReplaceLanguage).isEqualTo("zh")
+        assertThat(localDataSource.lastReplaceUnitSystem).isEqualTo("imperial")
+        assertThat(localDataSource.replacedDailyForecast).hasSize(1)
+        assertThat(localDataSource.replacedDailyForecast?.first()?.tempMax).isEqualTo("86")
+    }
+
+    @Test
     fun refreshCurrentWeather_throwsWhenApiConfigMissing() = runTest {
         val repository = QWeatherWeatherRepository(
             weatherApiService = mockk(),
             qWeatherConfig = QWeatherConfig(apiKey = "", apiHost = ""),
             currentWeatherLocalDataSource = FakeCurrentWeatherLocalDataSource(),
             hourlyForecastLocalDataSource = FakeHourlyForecastLocalDataSource(),
+            dailyForecastLocalDataSource = FakeDailyForecastLocalDataSource(),
             settingsRepository = FakeSettingsRepository(),
         )
 
@@ -198,6 +280,7 @@ class QWeatherWeatherRepositoryTest {
         weatherApiService: WeatherApiService = mockk(),
         currentWeatherLocalDataSource: CurrentWeatherLocalDataSource = FakeCurrentWeatherLocalDataSource(),
         hourlyForecastLocalDataSource: HourlyForecastLocalDataSource = FakeHourlyForecastLocalDataSource(),
+        dailyForecastLocalDataSource: DailyForecastLocalDataSource = FakeDailyForecastLocalDataSource(),
         settingsRepository: SettingsRepository = FakeSettingsRepository(),
     ): QWeatherWeatherRepository {
         return QWeatherWeatherRepository(
@@ -208,6 +291,7 @@ class QWeatherWeatherRepositoryTest {
             ),
             currentWeatherLocalDataSource = currentWeatherLocalDataSource,
             hourlyForecastLocalDataSource = hourlyForecastLocalDataSource,
+            dailyForecastLocalDataSource = dailyForecastLocalDataSource,
             settingsRepository = settingsRepository,
         )
     }
@@ -242,6 +326,23 @@ class QWeatherWeatherRepositoryTest {
         windDirection = "South",
         windScale = "2",
         windSpeed = "13",
+        fetchedAtEpochMillis = 100L,
+        language = "en",
+        unitSystem = "metric",
+    )
+
+    private fun sampleDailyForecastLocal() = DailyForecastLocalModel(
+        cityId = "101020100",
+        forecastDate = "2026-04-09",
+        tempMax = "30",
+        tempMin = "22",
+        conditionTextDay = "Sunny",
+        conditionIconDay = "100",
+        precipitationProbability = "10",
+        precipitation = "0.0",
+        windDirectionDay = "South",
+        windScaleDay = "3",
+        windSpeedDay = "16",
         fetchedAtEpochMillis = 100L,
         language = "en",
         unitSystem = "metric",
@@ -321,6 +422,49 @@ class QWeatherWeatherRepositoryTest {
 
         override suspend fun clearHourlyForecastCache() {
             hourlyForecastFlow.value = emptyList()
+        }
+    }
+
+    private class FakeDailyForecastLocalDataSource(
+        dailyForecast: List<DailyForecastLocalModel> = emptyList(),
+    ) : DailyForecastLocalDataSource {
+        private val dailyForecastFlow = MutableStateFlow(dailyForecast)
+        var replacedDailyForecast: List<DailyForecastLocalModel>? = null
+        var lastObservedLanguage: String? = null
+        var lastObservedUnitSystem: String? = null
+        var lastReplaceLanguage: String? = null
+        var lastReplaceUnitSystem: String? = null
+
+        override fun observeDailyForecast(
+            cityId: String,
+            language: String,
+            unitSystem: String,
+        ): Flow<List<DailyForecastLocalModel>> {
+            lastObservedLanguage = language
+            lastObservedUnitSystem = unitSystem
+            return dailyForecastFlow
+        }
+
+        override suspend fun getDailyForecast(
+            cityId: String,
+            language: String,
+            unitSystem: String,
+        ): List<DailyForecastLocalModel> = dailyForecastFlow.value
+
+        override suspend fun replaceDailyForecast(
+            cityId: String,
+            language: String,
+            unitSystem: String,
+            dailyForecast: List<DailyForecastLocalModel>,
+        ) {
+            lastReplaceLanguage = language
+            lastReplaceUnitSystem = unitSystem
+            replacedDailyForecast = dailyForecast
+            dailyForecastFlow.value = dailyForecast
+        }
+
+        override suspend fun clearDailyForecastCache() {
+            dailyForecastFlow.value = emptyList()
         }
     }
 

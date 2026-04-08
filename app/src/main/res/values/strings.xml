@@ -31,6 +31,10 @@
     <string name="home_hourly_title">Next 24 Hours</string>
     <string name="home_hourly_empty">Hourly forecast is unavailable right now.</string>
     <string name="home_hourly_pop">POP %1$s%%</string>
+    <string name="home_daily_title">Next 7 Days</string>
+    <string name="home_daily_empty">Daily forecast is unavailable right now.</string>
+    <string name="home_daily_temp_range">High %1$s° / Low %2$s°</string>
+    <string name="home_daily_pop">POP %1$s%%</string>
 
     <string name="search_title">Find a city</string>
     <string name="search_description">Search by city name to see clear, disambiguated results.</string>
