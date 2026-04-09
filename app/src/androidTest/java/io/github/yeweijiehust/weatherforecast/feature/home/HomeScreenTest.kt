@@ -1,11 +1,15 @@
 package io.github.yeweijiehust.weatherforecast.feature.home
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import io.github.yeweijiehust.weatherforecast.core.localization.WeatherForecastLocalizedContent
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.City
@@ -177,6 +181,36 @@ class HomeScreenTest {
                         onOpenDetail = { cityId -> openedCityId = cityId },
                         onPullToRefresh = {},
                     )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithText("View details").performClick()
+
+        assertEquals("101020100", openedCityId)
+    }
+
+    @Test
+    fun contentState_inExpandedWidth_clickViewDetailsCallsOnOpenDetailWithCityId() {
+        var openedCityId: String? = null
+
+        composeTestRule.setContent {
+            Box(
+                modifier = androidx.compose.ui.Modifier
+                    .width(900.dp)
+                    .height(1400.dp),
+            ) {
+                WeatherForecastLocalizedContent(language = AppLanguage.English) {
+                    WeatherForecastTheme {
+                        HomeScreen(
+                            uiState = HomeUiState(
+                                state = HomeState.Content(snapshot = sampleSnapshot()),
+                            ),
+                            onManageCitiesClick = {},
+                            onOpenDetail = { cityId -> openedCityId = cityId },
+                            onPullToRefresh = {},
+                        )
+                    }
                 }
             }
         }

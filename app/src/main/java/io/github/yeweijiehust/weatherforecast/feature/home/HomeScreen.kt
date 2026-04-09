@@ -201,32 +201,40 @@ private fun ContentState(
     ) {
         val isExpandedWidth = maxWidth >= 840.dp
         if (isExpandedWidth) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Column(
-                    modifier = Modifier.weight(0.9f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    CurrentWeatherHeroCard(
-                        city = snapshot.city,
-                        currentWeather = snapshot.currentWeather,
-                    )
-                    SnapshotStatusBlock(
-                        lastUpdatedEpochMillis = snapshot.lastUpdatedEpochMillis,
-                        isRefreshing = isRefreshing,
-                        isStaleCache = isStaleCache,
-                    )
-                    SecondaryMetricsBlock(currentWeather = snapshot.currentWeather)
+                    Column(
+                        modifier = Modifier.weight(0.9f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CurrentWeatherHeroCard(
+                            city = snapshot.city,
+                            currentWeather = snapshot.currentWeather,
+                        )
+                        SnapshotStatusBlock(
+                            lastUpdatedEpochMillis = snapshot.lastUpdatedEpochMillis,
+                            isRefreshing = isRefreshing,
+                            isStaleCache = isStaleCache,
+                        )
+                        SecondaryMetricsBlock(currentWeather = snapshot.currentWeather)
+                    }
+                    Column(
+                        modifier = Modifier.weight(1.1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        HourlyForecastSection(hourlyForecast = snapshot.hourlyForecast)
+                        DailyForecastSection(dailyForecast = snapshot.dailyForecast)
+                    }
                 }
-                Column(
-                    modifier = Modifier.weight(1.1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    HourlyForecastSection(hourlyForecast = snapshot.hourlyForecast)
-                    DailyForecastSection(dailyForecast = snapshot.dailyForecast)
-                }
+                SecondarySummarySection(
+                    summary = snapshot.secondarySummary,
+                    onOpenDetail = { onOpenDetail(snapshot.city.id) },
+                )
             }
         } else {
             Column(
