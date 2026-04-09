@@ -20,6 +20,6 @@ class AppLocaleViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
-            initialValue = AppLanguage.English,
+            initialValue = AppLanguage.SimplifiedChinese,
         )
 }

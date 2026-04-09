@@ -39,7 +39,7 @@ class DataStoreAppSettingsPreferencesDataSource @Inject constructor(
         return AppSettings(
             language = AppLanguage.entries.firstOrNull {
                 it.storageValue == preferences[APP_LANGUAGE_KEY]
-            } ?: AppLanguage.English,
+            } ?: AppLanguage.SimplifiedChinese,
             unitSystem = UnitSystem.entries.firstOrNull {
                 it.storageValue == preferences[UNIT_SYSTEM_KEY]
             } ?: UnitSystem.Metric,
