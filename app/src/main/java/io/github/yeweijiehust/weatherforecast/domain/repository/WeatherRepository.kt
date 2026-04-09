@@ -10,54 +10,78 @@ import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndicesFetchRe
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import kotlinx.coroutines.flow.Flow
 
-interface WeatherRepository {
+interface CurrentWeatherRepository {
     fun observeCurrentWeather(cityId: String): Flow<CurrentWeather?>
 
     suspend fun refreshCurrentWeather(
         cityId: String,
         forceRefresh: Boolean = false,
     )
+}
 
+interface HourlyForecastRepository {
     fun observeHourlyForecast(cityId: String): Flow<List<HourlyForecast>>
 
     suspend fun refreshHourlyForecast(
         cityId: String,
         forceRefresh: Boolean = false,
     )
+}
 
+interface DailyForecastRepository {
     fun observeDailyForecast(cityId: String): Flow<List<DailyForecast>>
 
     suspend fun refreshDailyForecast(
         cityId: String,
         forceRefresh: Boolean = false,
     )
+}
 
+interface WeatherAlertsRepository {
     suspend fun fetchWeatherAlerts(
         latitude: String,
         longitude: String,
         forceRefresh: Boolean = false,
     ): WeatherAlertFetchResult
+}
 
+interface AirQualityRepository {
     suspend fun fetchAirQuality(
         latitude: String,
         longitude: String,
         forceRefresh: Boolean = false,
     ): AirQualityFetchResult
+}
 
+interface MinutePrecipitationRepository {
     suspend fun fetchMinutePrecipitation(
         latitude: String,
         longitude: String,
         forceRefresh: Boolean = false,
     ): MinutePrecipitationFetchResult
+}
 
+interface SunriseSunsetRepository {
     suspend fun fetchSunriseSunset(
         locationId: String,
         date: String,
         forceRefresh: Boolean = false,
     ): SunriseSunsetFetchResult
+}
 
+interface WeatherIndicesRepository {
     suspend fun fetchWeatherIndices(
         locationId: String,
         forceRefresh: Boolean = false,
     ): WeatherIndicesFetchResult
 }
+
+interface WeatherRepository :
+    CurrentWeatherRepository,
+    HourlyForecastRepository,
+    DailyForecastRepository,
+    WeatherAlertsRepository,
+    AirQualityRepository,
+    MinutePrecipitationRepository,
+    SunriseSunsetRepository,
+    WeatherIndicesRepository

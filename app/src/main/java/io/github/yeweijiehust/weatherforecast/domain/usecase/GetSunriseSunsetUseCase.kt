@@ -1,11 +1,11 @@
 package io.github.yeweijiehust.weatherforecast.domain.usecase
 
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
-import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.SunriseSunsetRepository
 import javax.inject.Inject
 
 class GetSunriseSunsetUseCase @Inject constructor(
-    private val weatherRepository: WeatherRepository,
+    private val weatherRepository: SunriseSunsetRepository,
 ) {
     suspend operator fun invoke(
         locationId: String,

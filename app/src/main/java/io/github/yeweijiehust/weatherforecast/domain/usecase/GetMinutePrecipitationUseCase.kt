@@ -1,11 +1,11 @@
 package io.github.yeweijiehust.weatherforecast.domain.usecase
 
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
-import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.MinutePrecipitationRepository
 import javax.inject.Inject
 
 class GetMinutePrecipitationUseCase @Inject constructor(
-    private val weatherRepository: WeatherRepository,
+    private val weatherRepository: MinutePrecipitationRepository,
 ) {
     suspend operator fun invoke(
         latitude: String,

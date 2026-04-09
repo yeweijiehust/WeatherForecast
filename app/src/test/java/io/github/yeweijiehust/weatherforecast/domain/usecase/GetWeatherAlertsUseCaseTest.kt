@@ -2,7 +2,7 @@ package io.github.yeweijiehust.weatherforecast.domain.usecase
 
 import com.google.common.truth.Truth.assertThat
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
-import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherAlertsRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -12,7 +12,7 @@ import org.junit.Test
 class GetWeatherAlertsUseCaseTest {
     @Test
     fun invoke_delegatesToRepository() = runTest {
-        val repository = mockk<WeatherRepository>()
+        val repository = mockk<WeatherAlertsRepository>()
         coEvery {
             repository.fetchWeatherAlerts(
                 latitude = "31.23",

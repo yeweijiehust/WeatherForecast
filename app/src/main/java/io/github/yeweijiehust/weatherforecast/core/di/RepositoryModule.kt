@@ -17,9 +17,17 @@ import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import io.github.yeweijiehust.weatherforecast.data.repository.DefaultSettingsRepository
 import io.github.yeweijiehust.weatherforecast.data.repository.QWeatherCityRepository
 import io.github.yeweijiehust.weatherforecast.data.repository.QWeatherWeatherRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.AirQualityRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.CurrentWeatherRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.DailyForecastRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.HourlyForecastRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.MinutePrecipitationRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.SunriseSunsetRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherAlertsRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherIndicesRepository
 import javax.inject.Singleton
 
 @Module
@@ -51,14 +59,14 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideWeatherRepository(
+    fun provideQWeatherWeatherRepository(
         weatherApiService: WeatherApiService,
         qWeatherConfig: QWeatherConfig,
         currentWeatherLocalDataSource: CurrentWeatherLocalDataSource,
         hourlyForecastLocalDataSource: HourlyForecastLocalDataSource,
         dailyForecastLocalDataSource: DailyForecastLocalDataSource,
         settingsRepository: SettingsRepository,
-    ): WeatherRepository = QWeatherWeatherRepository(
+    ): QWeatherWeatherRepository = QWeatherWeatherRepository(
         weatherApiService = weatherApiService,
         qWeatherConfig = qWeatherConfig,
         currentWeatherLocalDataSource = currentWeatherLocalDataSource,
@@ -66,4 +74,58 @@ object RepositoryModule {
         dailyForecastLocalDataSource = dailyForecastLocalDataSource,
         settingsRepository = settingsRepository,
     )
+
+    @Provides
+    @Singleton
+    fun provideWeatherRepository(
+        repository: QWeatherWeatherRepository,
+    ): WeatherRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideCurrentWeatherRepository(
+        repository: QWeatherWeatherRepository,
+    ): CurrentWeatherRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideHourlyForecastRepository(
+        repository: QWeatherWeatherRepository,
+    ): HourlyForecastRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideDailyForecastRepository(
+        repository: QWeatherWeatherRepository,
+    ): DailyForecastRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideWeatherAlertsRepository(
+        repository: QWeatherWeatherRepository,
+    ): WeatherAlertsRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideAirQualityRepository(
+        repository: QWeatherWeatherRepository,
+    ): AirQualityRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideMinutePrecipitationRepository(
+        repository: QWeatherWeatherRepository,
+    ): MinutePrecipitationRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideSunriseSunsetRepository(
+        repository: QWeatherWeatherRepository,
+    ): SunriseSunsetRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideWeatherIndicesRepository(
+        repository: QWeatherWeatherRepository,
+    ): WeatherIndicesRepository = repository
 }

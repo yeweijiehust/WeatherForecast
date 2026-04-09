@@ -1,10 +1,10 @@
 package io.github.yeweijiehust.weatherforecast.domain.usecase
 
-import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
+import io.github.yeweijiehust.weatherforecast.domain.repository.HourlyForecastRepository
 import javax.inject.Inject
 
 class RefreshHourlyForecastUseCase @Inject constructor(
-    private val weatherRepository: WeatherRepository,
+    private val weatherRepository: HourlyForecastRepository,
 ) {
     suspend operator fun invoke(
         cityId: String,
