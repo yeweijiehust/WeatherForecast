@@ -103,6 +103,12 @@
     <string name="detail_minutely_unsupported_region">Minute precipitation is not supported for this region.</string>
     <string name="detail_minutely_summary">Summary: %1$s</string>
     <string name="detail_minutely_item">%1$s  •  %2$s mm  •  Type %3$s</string>
+    <string name="detail_astronomy_title">Sunrise and sunset</string>
+    <string name="detail_astronomy_empty">Sunrise and sunset data is currently empty.</string>
+    <string name="detail_astronomy_unavailable">Sunrise and sunset data is temporarily unavailable.</string>
+    <string name="detail_astronomy_update_time">Updated at %1$s</string>
+    <string name="detail_astronomy_sunrise">Sunrise: %1$s</string>
+    <string name="detail_astronomy_sunset">Sunset: %1$s</string>
     <string name="detail_alert_section_title">Weather alerts</string>
     <string name="detail_alert_count">%1$d active alert(s)</string>
     <string name="detail_alert_empty">No active weather alerts.</string>

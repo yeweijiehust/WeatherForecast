@@ -16,6 +16,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFailureReason
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
@@ -275,6 +277,45 @@ class QWeatherWeatherRepository @Inject constructor(
 
                 else -> {
                     MinutePrecipitationFetchResult.Failure(MinutePrecipitationFailureReason.Unknown)
+                }
+            }
+        }
+    }
+
+    override suspend fun fetchSunriseSunset(
+        locationId: String,
+        date: String,
+    ): SunriseSunsetFetchResult {
+        check(qWeatherConfig.isConfigured) {
+            "Weather API is not configured. Add api_key and api_host to local.properties."
+        }
+
+        val settings = settingsRepository.getCurrentSettings()
+        return try {
+            val response = weatherApiService.getSunriseSunset(
+                locationId = locationId,
+                date = date,
+                language = settings.language.apiCode,
+            )
+            if (response.code == SUCCESS_CODE) {
+                SunriseSunsetFetchResult.Available(response.toDomain())
+            } else {
+                SunriseSunsetFetchResult.Failure(SunriseSunsetFailureReason.Unknown)
+            }
+        } catch (_: SocketTimeoutException) {
+            SunriseSunsetFetchResult.Failure(SunriseSunsetFailureReason.Timeout)
+        } catch (httpException: HttpException) {
+            when (httpException.code()) {
+                UNAUTHORIZED_STATUS_CODE -> {
+                    SunriseSunsetFetchResult.Failure(SunriseSunsetFailureReason.Unauthorized)
+                }
+
+                QUOTA_EXCEEDED_STATUS_CODE -> {
+                    SunriseSunsetFetchResult.Failure(SunriseSunsetFailureReason.QuotaExceeded)
+                }
+
+                else -> {
+                    SunriseSunsetFetchResult.Failure(SunriseSunsetFailureReason.Unknown)
                 }
             }
         }

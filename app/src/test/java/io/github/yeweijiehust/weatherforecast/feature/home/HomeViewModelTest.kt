@@ -11,6 +11,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
@@ -552,6 +554,13 @@ class HomeViewModelTest {
             longitude: String,
         ): MinutePrecipitationFetchResult {
             return MinutePrecipitationFetchResult.UnsupportedRegion
+        }
+
+        override suspend fun fetchSunriseSunset(
+            locationId: String,
+            date: String,
+        ): SunriseSunsetFetchResult {
+            return SunriseSunsetFetchResult.Failure(SunriseSunsetFailureReason.Unknown)
         }
     }
 }

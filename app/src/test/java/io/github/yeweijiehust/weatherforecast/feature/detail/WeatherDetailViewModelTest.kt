@@ -13,10 +13,14 @@ import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFe
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFailureReason
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationPoint
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunset
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetAirQualityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetMinutePrecipitationUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetSunriseSunsetUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherAlertsUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDailyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveHourlyForecastUseCase
@@ -27,6 +31,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,6 +69,9 @@ class WeatherDetailViewModelTest {
             minutePrecipitationResult = MinutePrecipitationFetchResult.Available(
                 timeline = sampleMinutePrecipitationTimeline(),
             ),
+            sunriseSunsetResult = SunriseSunsetFetchResult.Available(
+                sunriseSunset = sampleSunriseSunset(),
+            ),
             alertResult = WeatherAlertFetchResult.Available(alerts = listOf(sampleAlert())),
             airQualityResult = AirQualityFetchResult.Available(airQuality = sampleAirQuality()),
         )
@@ -75,6 +85,7 @@ class WeatherDetailViewModelTest {
         assertThat(content.dailyForecast).hasSize(1)
         assertThat(content.minutePrecipitation?.points).hasSize(2)
         assertThat(content.isMinutePrecipitationUnsupported).isFalse()
+        assertThat(content.sunriseSunset?.sunrise).isEqualTo("2026-04-09T05:34+08:00")
         assertThat(content.alerts).hasSize(1)
         assertThat(content.airQuality?.aqi).isEqualTo("86")
     }
@@ -101,6 +112,7 @@ class WeatherDetailViewModelTest {
             hourlyFlow = MutableStateFlow(listOf(sampleHourlyForecast())),
             dailyFlow = MutableStateFlow(listOf(sampleDailyForecast())),
             minutePrecipitationResult = MinutePrecipitationFetchResult.UnsupportedRegion,
+            sunriseSunsetResult = SunriseSunsetFetchResult.Available(sampleSunriseSunset()),
             alertResult = WeatherAlertFetchResult.Empty,
             airQualityResult = AirQualityFetchResult.UnsupportedRegion,
         )
@@ -111,6 +123,7 @@ class WeatherDetailViewModelTest {
         assertThat(content.alerts).isEmpty()
         assertThat(content.minutePrecipitation).isNull()
         assertThat(content.isMinutePrecipitationUnsupported).isTrue()
+        assertThat(content.sunriseSunset?.sunset).isEqualTo("2026-04-09T18:18+08:00")
         assertThat(content.airQuality).isNull()
         assertThat(content.isAirQualityUnsupported).isTrue()
     }
@@ -124,6 +137,7 @@ class WeatherDetailViewModelTest {
             minutePrecipitationResult = MinutePrecipitationFetchResult.Failure(
                 reason = MinutePrecipitationFailureReason.Timeout,
             ),
+            sunriseSunsetResult = SunriseSunsetFetchResult.Available(sampleSunriseSunset()),
             alertResult = WeatherAlertFetchResult.Empty,
             airQualityResult = AirQualityFetchResult.UnsupportedRegion,
         )
@@ -134,6 +148,28 @@ class WeatherDetailViewModelTest {
             .isInstanceOf(WeatherDetailState.PartialContent::class.java)
         val partial = viewModel.uiState.value.state as WeatherDetailState.PartialContent
         assertThat(partial.unavailableSections).contains(WeatherDetailSection.MinutePrecipitation)
+    }
+
+    @Test
+    fun init_whenAstronomyRequestFails_emitsPartialContentWithAstronomyUnavailable() = runTest {
+        val viewModel = createViewModel(
+            citiesFlow = MutableStateFlow(listOf(sampleCity())),
+            hourlyFlow = MutableStateFlow(listOf(sampleHourlyForecast())),
+            dailyFlow = MutableStateFlow(listOf(sampleDailyForecast())),
+            minutePrecipitationResult = MinutePrecipitationFetchResult.UnsupportedRegion,
+            sunriseSunsetResult = SunriseSunsetFetchResult.Failure(
+                reason = SunriseSunsetFailureReason.Timeout,
+            ),
+            alertResult = WeatherAlertFetchResult.Empty,
+            airQualityResult = AirQualityFetchResult.UnsupportedRegion,
+        )
+
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.state)
+            .isInstanceOf(WeatherDetailState.PartialContent::class.java)
+        val partial = viewModel.uiState.value.state as WeatherDetailState.PartialContent
+        assertThat(partial.unavailableSections).contains(WeatherDetailSection.Astronomy)
     }
 
     @Test
@@ -197,6 +233,7 @@ class WeatherDetailViewModelTest {
         hourlyFlow: MutableStateFlow<List<HourlyForecast>>,
         dailyFlow: MutableStateFlow<List<DailyForecast>>,
         minutePrecipitationResult: MinutePrecipitationFetchResult = MinutePrecipitationFetchResult.UnsupportedRegion,
+        sunriseSunsetResult: SunriseSunsetFetchResult = SunriseSunsetFetchResult.Available(sampleSunriseSunset()),
         alertResult: WeatherAlertFetchResult = WeatherAlertFetchResult.Empty,
         airQualityResult: AirQualityFetchResult = AirQualityFetchResult.UnsupportedRegion,
         alertFailure: Throwable? = null,
@@ -228,6 +265,14 @@ class WeatherDetailViewModelTest {
                 useCase.invoke(latitude = "31.23", longitude = "121.47")
             } returns minutePrecipitationResult
         }
+        val astronomyDate = LocalDate
+            .now(ZoneId.of("Asia/Shanghai"))
+            .format(DateTimeFormatter.BASIC_ISO_DATE)
+        val getSunriseSunsetUseCase = mockk<GetSunriseSunsetUseCase>().also { useCase ->
+            coEvery {
+                useCase.invoke(locationId = "101020100", date = astronomyDate)
+            } returns sunriseSunsetResult
+        }
         val getAirQualityUseCase = mockk<GetAirQualityUseCase>().also { useCase ->
             coEvery {
                 useCase.invoke(latitude = "31.23", longitude = "121.47")
@@ -245,6 +290,7 @@ class WeatherDetailViewModelTest {
             getWeatherAlertsUseCase = getWeatherAlertsUseCase,
             getAirQualityUseCase = getAirQualityUseCase,
             getMinutePrecipitationUseCase = getMinutePrecipitationUseCase,
+            getSunriseSunsetUseCase = getSunriseSunsetUseCase,
         )
     }
 
@@ -328,6 +374,14 @@ class WeatherDetailViewModelTest {
                     type = "rain",
                 ),
             ),
+        )
+    }
+
+    private fun sampleSunriseSunset(): SunriseSunset {
+        return SunriseSunset(
+            updateTime = "2026-04-09T11:00+08:00",
+            sunrise = "2026-04-09T05:34+08:00",
+            sunset = "2026-04-09T18:18+08:00",
         )
     }
 

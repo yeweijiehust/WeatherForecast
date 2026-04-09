@@ -10,6 +10,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationPoint
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunset
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
 import org.junit.Test
@@ -28,6 +29,7 @@ class WeatherDetailScreenScreenshotTest {
                 hourlyForecast = listOf(sampleHourlyForecast()),
                 dailyForecast = listOf(sampleDailyForecast()),
                 minutePrecipitation = sampleMinutePrecipitationTimeline(),
+                sunriseSunset = sampleSunriseSunset(),
                 alerts = listOf(sampleAlert()),
                 airQuality = sampleAirQuality(),
             ),
@@ -44,12 +46,14 @@ class WeatherDetailScreenScreenshotTest {
                 dailyForecast = listOf(sampleDailyForecast()),
                 minutePrecipitation = null,
                 isMinutePrecipitationUnsupported = false,
+                sunriseSunset = null,
                 alerts = emptyList(),
                 airQuality = null,
                 isAirQualityUnsupported = false,
                 unavailableSections = setOf(
                     WeatherDetailSection.HourlyForecast,
                     WeatherDetailSection.MinutePrecipitation,
+                    WeatherDetailSection.Astronomy,
                     WeatherDetailSection.AirQuality,
                 ),
             ),
@@ -75,6 +79,7 @@ class WeatherDetailScreenScreenshotTest {
                         onRetryHourly = {},
                         onRetryDaily = {},
                         onRetryMinutePrecipitation = {},
+                        onRetryAstronomy = {},
                         onRetryAlerts = {},
                         onRetryAirQuality = {},
                         onRetryAll = {},
@@ -159,6 +164,14 @@ class WeatherDetailScreenScreenshotTest {
                     type = "rain",
                 ),
             ),
+        )
+    }
+
+    private fun sampleSunriseSunset(): SunriseSunset {
+        return SunriseSunset(
+            updateTime = "2026-04-09T11:00+08:00",
+            sunrise = "2026-04-09T05:34+08:00",
+            sunset = "2026-04-09T18:18+08:00",
         )
     }
 

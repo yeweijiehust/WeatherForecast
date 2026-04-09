@@ -12,10 +12,13 @@ import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunset
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetAirQualityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetMinutePrecipitationUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetSunriseSunsetUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherAlertsUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDailyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveHourlyForecastUseCase
@@ -29,6 +32,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @HiltViewModel
 class WeatherDetailViewModel @Inject constructor(
@@ -41,6 +47,7 @@ class WeatherDetailViewModel @Inject constructor(
     private val getWeatherAlertsUseCase: GetWeatherAlertsUseCase,
     private val getAirQualityUseCase: GetAirQualityUseCase,
     private val getMinutePrecipitationUseCase: GetMinutePrecipitationUseCase,
+    private val getSunriseSunsetUseCase: GetSunriseSunsetUseCase,
 ) : ViewModel() {
     private val cityId = savedStateHandle.get<String>(WeatherForecastDestination.CITY_ID_ARG).orEmpty()
 
@@ -55,6 +62,7 @@ class WeatherDetailViewModel @Inject constructor(
     private var dailyForecast: List<DailyForecast>? = null
     private var minutePrecipitation: MinutePrecipitationTimeline? = null
     private var isMinutePrecipitationUnsupported = false
+    private var sunriseSunset: SunriseSunset? = null
     private var alerts: List<WeatherAlert> = emptyList()
     private var airQuality: AirQuality? = null
     private var isAirQualityUnsupported = false
@@ -107,6 +115,13 @@ class WeatherDetailViewModel @Inject constructor(
         }
     }
 
+    fun retryAstronomySection() {
+        val city = activeCity ?: return
+        viewModelScope.launch {
+            refreshAstronomySection(city)
+        }
+    }
+
     fun retryAirQualitySection() {
         val city = activeCity ?: return
         viewModelScope.launch {
@@ -120,6 +135,7 @@ class WeatherDetailViewModel @Inject constructor(
         dailyForecast = null
         minutePrecipitation = null
         isMinutePrecipitationUnsupported = false
+        sunriseSunset = null
         alerts = emptyList()
         airQuality = null
         isAirQualityUnsupported = false
@@ -129,6 +145,7 @@ class WeatherDetailViewModel @Inject constructor(
         viewModelScope.launch { refreshHourlySection(city.id) }
         viewModelScope.launch { refreshDailySection(city.id) }
         viewModelScope.launch { refreshMinutePrecipitationSection(city) }
+        viewModelScope.launch { refreshAstronomySection(city) }
         viewModelScope.launch { refreshAlertsSection(city) }
         viewModelScope.launch { refreshAirQualitySection(city) }
     }
@@ -240,6 +257,34 @@ class WeatherDetailViewModel @Inject constructor(
         emitStateIfReady()
     }
 
+    private suspend fun refreshAstronomySection(city: City) {
+        val date = currentDateInCity(city.timeZone)
+        val result = runCatching {
+            getSunriseSunsetUseCase(
+                locationId = city.id,
+                date = date,
+            )
+        }
+        result.onFailure {
+            sunriseSunset = null
+            unavailableSections.add(WeatherDetailSection.Astronomy)
+            emitStateIfReady()
+            return
+        }
+        when (val state = result.getOrThrow()) {
+            is SunriseSunsetFetchResult.Available -> {
+                sunriseSunset = state.sunriseSunset
+                unavailableSections.remove(WeatherDetailSection.Astronomy)
+            }
+
+            is SunriseSunsetFetchResult.Failure -> {
+                sunriseSunset = null
+                unavailableSections.add(WeatherDetailSection.Astronomy)
+            }
+        }
+        emitStateIfReady()
+    }
+
     private suspend fun refreshAirQualitySection(city: City) {
         val result = runCatching {
             getAirQualityUseCase(
@@ -292,6 +337,7 @@ class WeatherDetailViewModel @Inject constructor(
                     dailyForecast = daily,
                     minutePrecipitation = minutePrecipitation,
                     isMinutePrecipitationUnsupported = isMinutePrecipitationUnsupported,
+                    sunriseSunset = sunriseSunset,
                     alerts = alerts,
                     airQuality = airQuality,
                     isAirQualityUnsupported = isAirQualityUnsupported,
@@ -305,6 +351,7 @@ class WeatherDetailViewModel @Inject constructor(
                     dailyForecast = daily,
                     minutePrecipitation = minutePrecipitation,
                     isMinutePrecipitationUnsupported = isMinutePrecipitationUnsupported,
+                    sunriseSunset = sunriseSunset,
                     alerts = alerts,
                     airQuality = airQuality,
                     isAirQualityUnsupported = isAirQualityUnsupported,
@@ -312,5 +359,12 @@ class WeatherDetailViewModel @Inject constructor(
                 ),
             )
         }
+    }
+
+    private fun currentDateInCity(timeZoneId: String): String {
+        val zoneId = runCatching {
+            ZoneId.of(timeZoneId)
+        }.getOrDefault(ZoneId.systemDefault())
+        return LocalDate.now(zoneId).format(DateTimeFormatter.BASIC_ISO_DATE)
     }
 }

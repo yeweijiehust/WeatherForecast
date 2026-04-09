@@ -24,6 +24,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunset
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 
 @Composable
@@ -36,12 +37,14 @@ fun WeatherDetailRoute(
         onRetryHourly = viewModel::retryHourlySection,
         onRetryDaily = viewModel::retryDailySection,
         onRetryMinutePrecipitation = viewModel::retryMinutePrecipitationSection,
+        onRetryAstronomy = viewModel::retryAstronomySection,
         onRetryAlerts = viewModel::retryAlertsSection,
         onRetryAirQuality = viewModel::retryAirQualitySection,
         onRetryAll = {
             viewModel.retryHourlySection()
             viewModel.retryDailySection()
             viewModel.retryMinutePrecipitationSection()
+            viewModel.retryAstronomySection()
             viewModel.retryAlertsSection()
             viewModel.retryAirQualitySection()
         },
@@ -54,6 +57,7 @@ fun WeatherDetailScreen(
     onRetryHourly: () -> Unit,
     onRetryDaily: () -> Unit,
     onRetryMinutePrecipitation: () -> Unit,
+    onRetryAstronomy: () -> Unit,
     onRetryAlerts: () -> Unit,
     onRetryAirQuality: () -> Unit,
     onRetryAll: () -> Unit,
@@ -80,6 +84,7 @@ fun WeatherDetailScreen(
                     onRetryHourly = onRetryHourly,
                     onRetryDaily = onRetryDaily,
                     onRetryMinutePrecipitation = onRetryMinutePrecipitation,
+                    onRetryAstronomy = onRetryAstronomy,
                     onRetryAlerts = onRetryAlerts,
                     onRetryAirQuality = onRetryAirQuality,
                 )
@@ -97,6 +102,7 @@ fun WeatherDetailScreen(
                     onRetryHourly = onRetryHourly,
                     onRetryDaily = onRetryDaily,
                     onRetryMinutePrecipitation = onRetryMinutePrecipitation,
+                    onRetryAstronomy = onRetryAstronomy,
                     onRetryAlerts = onRetryAlerts,
                     onRetryAirQuality = onRetryAirQuality,
                 )
@@ -130,6 +136,7 @@ private fun DetailSections(
     onRetryHourly: () -> Unit,
     onRetryDaily: () -> Unit,
     onRetryMinutePrecipitation: () -> Unit,
+    onRetryAstronomy: () -> Unit,
     onRetryAlerts: () -> Unit,
     onRetryAirQuality: () -> Unit,
 ) {
@@ -162,6 +169,11 @@ private fun DetailSections(
                 isUnavailable = false,
                 onRetry = onRetryMinutePrecipitation,
             )
+            AstronomySection(
+                sunriseSunset = state.sunriseSunset,
+                isUnavailable = false,
+                onRetry = onRetryAstronomy,
+            )
             AlertSection(
                 alerts = state.alerts,
                 isUnavailable = false,
@@ -191,6 +203,11 @@ private fun DetailSections(
                 isUnsupported = state.isMinutePrecipitationUnsupported,
                 isUnavailable = WeatherDetailSection.MinutePrecipitation in unavailableSections,
                 onRetry = onRetryMinutePrecipitation,
+            )
+            AstronomySection(
+                sunriseSunset = state.sunriseSunset,
+                isUnavailable = WeatherDetailSection.Astronomy in unavailableSections,
+                onRetry = onRetryAstronomy,
             )
             AlertSection(
                 alerts = state.alerts,
@@ -413,6 +430,74 @@ private fun MinutePrecipitationSection(
                         ),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(12.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AstronomySection(
+    sunriseSunset: SunriseSunset?,
+    isUnavailable: Boolean,
+    onRetry: () -> Unit,
+) {
+    Text(
+        text = localizedStringResource(R.string.detail_astronomy_title),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    when {
+        isUnavailable -> SectionUnavailable(
+            message = localizedStringResource(R.string.detail_astronomy_unavailable),
+            onRetry = onRetry,
+        )
+
+        sunriseSunset == null -> {
+            Text(
+                text = localizedStringResource(R.string.detail_astronomy_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        else -> {
+            if (sunriseSunset.updateTime.isNotBlank()) {
+                Text(
+                    text = localizedStringResource(
+                        R.string.detail_astronomy_update_time,
+                        sunriseSunset.updateTime,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                tonalElevation = 1.dp,
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = localizedStringResource(
+                            R.string.detail_astronomy_sunrise,
+                            sunriseSunset.sunrise.ifBlank {
+                                localizedStringResource(R.string.detail_fallback_dash)
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = localizedStringResource(
+                            R.string.detail_astronomy_sunset,
+                            sunriseSunset.sunset.ifBlank {
+                                localizedStringResource(R.string.detail_fallback_dash)
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }

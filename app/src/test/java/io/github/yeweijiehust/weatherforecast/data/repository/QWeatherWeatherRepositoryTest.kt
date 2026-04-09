@@ -23,6 +23,7 @@ import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.MinutePrecipitationPointDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.MinutePrecipitationResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.SunriseSunsetResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertEventTypeDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertMetadataDto
@@ -34,6 +35,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.AppSettings
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFailureReason
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.UnitSystem
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
 import io.mockk.coEvery
@@ -361,6 +364,81 @@ class QWeatherWeatherRepositoryTest {
         assertThat(result).isEqualTo(
             MinutePrecipitationFetchResult.Failure(
                 reason = MinutePrecipitationFailureReason.Unauthorized,
+            ),
+        )
+    }
+
+    @Test
+    fun fetchSunriseSunset_requestsUsingLocationDateAndLanguage() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getSunriseSunset(
+                locationId = "101020100",
+                date = "20260409",
+                language = "zh",
+            )
+        } returns SunriseSunsetResponseDto(
+            code = "200",
+            updateTime = "2026-04-09T11:00+08:00",
+            sunrise = "2026-04-09T05:34+08:00",
+            sunset = "2026-04-09T18:18+08:00",
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.SimplifiedChinese,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchSunriseSunset(
+            locationId = "101020100",
+            date = "20260409",
+        )
+
+        coVerify(exactly = 1) {
+            weatherApiService.getSunriseSunset(
+                locationId = "101020100",
+                date = "20260409",
+                language = "zh",
+            )
+        }
+        assertThat(result).isInstanceOf(SunriseSunsetFetchResult.Available::class.java)
+        val available = result as SunriseSunsetFetchResult.Available
+        assertThat(available.sunriseSunset.sunrise).isEqualTo("2026-04-09T05:34+08:00")
+        assertThat(available.sunriseSunset.sunset).isEqualTo("2026-04-09T18:18+08:00")
+    }
+
+    @Test
+    fun fetchSunriseSunset_mapsUnauthorizedHttpStatusToFailure() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getSunriseSunset(
+                locationId = "101020100",
+                date = "20260409",
+                language = "en",
+            )
+        } throws httpException(statusCode = 401)
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchSunriseSunset(
+            locationId = "101020100",
+            date = "20260409",
+        )
+
+        assertThat(result).isEqualTo(
+            SunriseSunsetFetchResult.Failure(
+                reason = SunriseSunsetFailureReason.Unauthorized,
             ),
         )
     }
