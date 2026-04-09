@@ -11,6 +11,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationPoint
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
 import org.junit.Rule
@@ -35,6 +37,7 @@ class WeatherDetailScreenTest {
                     city = sampleCity(),
                     hourlyForecast = listOf(sampleHourlyForecast()),
                     dailyForecast = listOf(sampleDailyForecast()),
+                    minutePrecipitation = sampleMinutePrecipitationTimeline(),
                     alerts = listOf(sampleAlert()),
                     airQuality = sampleAirQuality(),
                 ),
@@ -44,6 +47,8 @@ class WeatherDetailScreenTest {
         composeTestRule.onNodeWithText("Weather detail for Shanghai").assertIsDisplayed()
         composeTestRule.onNodeWithText("Hourly timeline").assertIsDisplayed()
         composeTestRule.onNodeWithText("Daily forecast").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Minute precipitation").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Summary: Rain expected in 30 minutes.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Weather alerts").assertIsDisplayed()
         composeTestRule.onNodeWithText("Rainstorm Blue Warning").assertIsDisplayed()
         composeTestRule.onNodeWithText("1 active alert(s)").assertIsDisplayed()
@@ -66,8 +71,11 @@ class WeatherDetailScreenTest {
                     alerts = emptyList(),
                     airQuality = null,
                     isAirQualityUnsupported = false,
+                    minutePrecipitation = null,
+                    isMinutePrecipitationUnsupported = false,
                     unavailableSections = setOf(
                         WeatherDetailSection.HourlyForecast,
+                        WeatherDetailSection.MinutePrecipitation,
                         WeatherDetailSection.AirQuality,
                     ),
                 ),
@@ -78,9 +86,33 @@ class WeatherDetailScreenTest {
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Hourly forecast is temporarily unavailable.")
             .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Minute precipitation data is temporarily unavailable.")
+            .assertIsDisplayed()
         composeTestRule.onNodeWithText("Air quality data is temporarily unavailable.")
             .assertIsDisplayed()
         composeTestRule.onAllNodesWithText("Retry").onFirst().assertIsDisplayed()
+    }
+
+    @Test
+    fun contentState_showsUnsupportedMessageWhenMinutelyNotSupported() {
+        renderScreen(
+            WeatherDetailUiState(
+                state = WeatherDetailState.Content(
+                    city = sampleCity(),
+                    hourlyForecast = listOf(sampleHourlyForecast()),
+                    dailyForecast = listOf(sampleDailyForecast()),
+                    minutePrecipitation = null,
+                    isMinutePrecipitationUnsupported = true,
+                    alerts = emptyList(),
+                    airQuality = null,
+                    isAirQualityUnsupported = true,
+                ),
+            ),
+        )
+
+        composeTestRule.onNodeWithText("Minute precipitation").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Minute precipitation is not supported for this region.")
+            .assertIsDisplayed()
     }
 
     private fun renderScreen(uiState: WeatherDetailUiState) {
@@ -91,6 +123,7 @@ class WeatherDetailScreenTest {
                         uiState = uiState,
                         onRetryHourly = {},
                         onRetryDaily = {},
+                        onRetryMinutePrecipitation = {},
                         onRetryAlerts = {},
                         onRetryAirQuality = {},
                         onRetryAll = {},
@@ -161,6 +194,20 @@ class WeatherDetailScreenTest {
             type = "rainstorm",
             typeName = "Rainstorm",
             text = "Expect heavy rain in the next 6 hours.",
+        )
+    }
+
+    private fun sampleMinutePrecipitationTimeline(): MinutePrecipitationTimeline {
+        return MinutePrecipitationTimeline(
+            updateTime = "2026-04-09T14:00+08:00",
+            summary = "Rain expected in 30 minutes.",
+            points = listOf(
+                MinutePrecipitationPoint(
+                    forecastTime = "2026-04-09T14:05+08:00",
+                    precipitation = "0.0",
+                    type = "rain",
+                ),
+            ),
         )
     }
 

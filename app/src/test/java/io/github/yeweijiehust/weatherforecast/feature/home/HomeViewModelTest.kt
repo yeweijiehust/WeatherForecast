@@ -10,6 +10,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
@@ -544,6 +545,13 @@ class HomeViewModelTest {
                 throw IllegalStateException("air-boom")
             }
             return airQualityResult
+        }
+
+        override suspend fun fetchMinutePrecipitation(
+            latitude: String,
+            longitude: String,
+        ): MinutePrecipitationFetchResult {
+            return MinutePrecipitationFetchResult.UnsupportedRegion
         }
     }
 }

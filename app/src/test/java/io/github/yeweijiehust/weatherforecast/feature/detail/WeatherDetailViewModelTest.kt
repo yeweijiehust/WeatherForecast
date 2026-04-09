@@ -9,9 +9,14 @@ import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationPoint
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetAirQualityUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetMinutePrecipitationUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherAlertsUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDailyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveHourlyForecastUseCase
@@ -54,6 +59,9 @@ class WeatherDetailViewModelTest {
             citiesFlow = MutableStateFlow(listOf(sampleCity())),
             hourlyFlow = MutableStateFlow(listOf(sampleHourlyForecast())),
             dailyFlow = MutableStateFlow(listOf(sampleDailyForecast())),
+            minutePrecipitationResult = MinutePrecipitationFetchResult.Available(
+                timeline = sampleMinutePrecipitationTimeline(),
+            ),
             alertResult = WeatherAlertFetchResult.Available(alerts = listOf(sampleAlert())),
             airQualityResult = AirQualityFetchResult.Available(airQuality = sampleAirQuality()),
         )
@@ -65,6 +73,8 @@ class WeatherDetailViewModelTest {
         assertThat(content.city.id).isEqualTo("101020100")
         assertThat(content.hourlyForecast).hasSize(1)
         assertThat(content.dailyForecast).hasSize(1)
+        assertThat(content.minutePrecipitation?.points).hasSize(2)
+        assertThat(content.isMinutePrecipitationUnsupported).isFalse()
         assertThat(content.alerts).hasSize(1)
         assertThat(content.airQuality?.aqi).isEqualTo("86")
     }
@@ -90,6 +100,7 @@ class WeatherDetailViewModelTest {
             citiesFlow = MutableStateFlow(listOf(sampleCity())),
             hourlyFlow = MutableStateFlow(listOf(sampleHourlyForecast())),
             dailyFlow = MutableStateFlow(listOf(sampleDailyForecast())),
+            minutePrecipitationResult = MinutePrecipitationFetchResult.UnsupportedRegion,
             alertResult = WeatherAlertFetchResult.Empty,
             airQualityResult = AirQualityFetchResult.UnsupportedRegion,
         )
@@ -98,8 +109,31 @@ class WeatherDetailViewModelTest {
 
         val content = viewModel.uiState.value.state as WeatherDetailState.Content
         assertThat(content.alerts).isEmpty()
+        assertThat(content.minutePrecipitation).isNull()
+        assertThat(content.isMinutePrecipitationUnsupported).isTrue()
         assertThat(content.airQuality).isNull()
         assertThat(content.isAirQualityUnsupported).isTrue()
+    }
+
+    @Test
+    fun init_whenMinutePrecipitationRequestFails_emitsPartialContentWithMinutelyUnavailable() = runTest {
+        val viewModel = createViewModel(
+            citiesFlow = MutableStateFlow(listOf(sampleCity())),
+            hourlyFlow = MutableStateFlow(listOf(sampleHourlyForecast())),
+            dailyFlow = MutableStateFlow(listOf(sampleDailyForecast())),
+            minutePrecipitationResult = MinutePrecipitationFetchResult.Failure(
+                reason = MinutePrecipitationFailureReason.Timeout,
+            ),
+            alertResult = WeatherAlertFetchResult.Empty,
+            airQualityResult = AirQualityFetchResult.UnsupportedRegion,
+        )
+
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.state)
+            .isInstanceOf(WeatherDetailState.PartialContent::class.java)
+        val partial = viewModel.uiState.value.state as WeatherDetailState.PartialContent
+        assertThat(partial.unavailableSections).contains(WeatherDetailSection.MinutePrecipitation)
     }
 
     @Test
@@ -162,6 +196,7 @@ class WeatherDetailViewModelTest {
         citiesFlow: MutableStateFlow<List<City>>,
         hourlyFlow: MutableStateFlow<List<HourlyForecast>>,
         dailyFlow: MutableStateFlow<List<DailyForecast>>,
+        minutePrecipitationResult: MinutePrecipitationFetchResult = MinutePrecipitationFetchResult.UnsupportedRegion,
         alertResult: WeatherAlertFetchResult = WeatherAlertFetchResult.Empty,
         airQualityResult: AirQualityFetchResult = AirQualityFetchResult.UnsupportedRegion,
         alertFailure: Throwable? = null,
@@ -188,6 +223,11 @@ class WeatherDetailViewModelTest {
                 } returns alertResult
             }
         }
+        val getMinutePrecipitationUseCase = mockk<GetMinutePrecipitationUseCase>().also { useCase ->
+            coEvery {
+                useCase.invoke(latitude = "31.23", longitude = "121.47")
+            } returns minutePrecipitationResult
+        }
         val getAirQualityUseCase = mockk<GetAirQualityUseCase>().also { useCase ->
             coEvery {
                 useCase.invoke(latitude = "31.23", longitude = "121.47")
@@ -204,6 +244,7 @@ class WeatherDetailViewModelTest {
             refreshDailyForecastUseCase = refreshDailyForecastUseCase,
             getWeatherAlertsUseCase = getWeatherAlertsUseCase,
             getAirQualityUseCase = getAirQualityUseCase,
+            getMinutePrecipitationUseCase = getMinutePrecipitationUseCase,
         )
     }
 
@@ -268,6 +309,25 @@ class WeatherDetailViewModelTest {
             type = "rainstorm",
             typeName = "Rainstorm",
             text = "Expect heavy rain in the next 6 hours.",
+        )
+    }
+
+    private fun sampleMinutePrecipitationTimeline(): MinutePrecipitationTimeline {
+        return MinutePrecipitationTimeline(
+            updateTime = "2026-04-09T14:00+08:00",
+            summary = "Rain expected in 30 minutes.",
+            points = listOf(
+                MinutePrecipitationPoint(
+                    forecastTime = "2026-04-09T14:05+08:00",
+                    precipitation = "0.0",
+                    type = "rain",
+                ),
+                MinutePrecipitationPoint(
+                    forecastTime = "2026-04-09T14:10+08:00",
+                    precipitation = "0.2",
+                    type = "rain",
+                ),
+            ),
         )
     }
 

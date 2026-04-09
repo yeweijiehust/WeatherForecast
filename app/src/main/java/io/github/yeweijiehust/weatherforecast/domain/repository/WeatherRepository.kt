@@ -4,6 +4,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import kotlinx.coroutines.flow.Flow
 
@@ -29,4 +30,9 @@ interface WeatherRepository {
         latitude: String,
         longitude: String,
     ): AirQualityFetchResult
+
+    suspend fun fetchMinutePrecipitation(
+        latitude: String,
+        longitude: String,
+    ): MinutePrecipitationFetchResult
 }

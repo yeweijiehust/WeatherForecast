@@ -4,6 +4,7 @@ import io.github.yeweijiehust.weatherforecast.data.remote.dto.CurrentWeatherResp
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.DailyForecastResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.MinutePrecipitationResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertResponseDto
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -44,4 +45,10 @@ interface WeatherApiService {
         @Path("longitude") longitude: String,
         @Query("lang") language: String,
     ): AirQualityResponseDto
+
+    @GET("v7/minutely/5m")
+    suspend fun getMinutePrecipitation(
+        @Query("location") location: String,
+        @Query("lang") language: String,
+    ): MinutePrecipitationResponseDto
 }

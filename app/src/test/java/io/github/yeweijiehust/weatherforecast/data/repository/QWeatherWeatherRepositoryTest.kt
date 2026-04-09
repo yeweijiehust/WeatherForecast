@@ -21,6 +21,8 @@ import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityPrimaryP
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.MinutePrecipitationPointDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.MinutePrecipitationResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertEventTypeDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertMetadataDto
@@ -29,6 +31,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFailureReas
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.AppSettings
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.UnitSystem
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
@@ -257,6 +261,107 @@ class QWeatherWeatherRepositoryTest {
 
         assertThat(result).isEqualTo(
             AirQualityFetchResult.Failure(reason = AirQualityFailureReason.Timeout),
+        )
+    }
+
+    @Test
+    fun fetchMinutePrecipitation_requestsUsingLonLatAndLanguage() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getMinutePrecipitation(
+                location = "121.47,31.23",
+                language = "zh",
+            )
+        } returns MinutePrecipitationResponseDto(
+            code = "200",
+            summary = "Rain expected in about 35 minutes.",
+            updateTime = "2026-04-09T14:00+08:00",
+            minutely = listOf(
+                MinutePrecipitationPointDto(
+                    forecastTime = "2026-04-09T14:05+08:00",
+                    precipitation = "0.0",
+                    type = "rain",
+                ),
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.SimplifiedChinese,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchMinutePrecipitation(latitude = "31.23", longitude = "121.47")
+
+        coVerify(exactly = 1) {
+            weatherApiService.getMinutePrecipitation(
+                location = "121.47,31.23",
+                language = "zh",
+            )
+        }
+        assertThat(result).isInstanceOf(MinutePrecipitationFetchResult.Available::class.java)
+        val available = result as MinutePrecipitationFetchResult.Available
+        assertThat(available.timeline.summary).isEqualTo("Rain expected in about 35 minutes.")
+        assertThat(available.timeline.points).hasSize(1)
+    }
+
+    @Test
+    fun fetchMinutePrecipitation_returnsUnsupportedRegionWhenNoDataCode() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getMinutePrecipitation(
+                location = "121.47,31.23",
+                language = "en",
+            )
+        } returns MinutePrecipitationResponseDto(
+            code = "204",
+            summary = "",
+            updateTime = "2026-04-09T14:00+08:00",
+            minutely = emptyList(),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchMinutePrecipitation(latitude = "31.23", longitude = "121.47")
+
+        assertThat(result).isEqualTo(MinutePrecipitationFetchResult.UnsupportedRegion)
+    }
+
+    @Test
+    fun fetchMinutePrecipitation_mapsUnauthorizedHttpStatusToFailure() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getMinutePrecipitation(
+                location = "121.47,31.23",
+                language = "en",
+            )
+        } throws httpException(statusCode = 401)
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchMinutePrecipitation(latitude = "31.23", longitude = "121.47")
+
+        assertThat(result).isEqualTo(
+            MinutePrecipitationFetchResult.Failure(
+                reason = MinutePrecipitationFailureReason.Unauthorized,
+            ),
         )
     }
 

@@ -10,9 +10,12 @@ import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetAirQualityUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetMinutePrecipitationUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherAlertsUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDailyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveHourlyForecastUseCase
@@ -37,6 +40,7 @@ class WeatherDetailViewModel @Inject constructor(
     private val refreshDailyForecastUseCase: RefreshDailyForecastUseCase,
     private val getWeatherAlertsUseCase: GetWeatherAlertsUseCase,
     private val getAirQualityUseCase: GetAirQualityUseCase,
+    private val getMinutePrecipitationUseCase: GetMinutePrecipitationUseCase,
 ) : ViewModel() {
     private val cityId = savedStateHandle.get<String>(WeatherForecastDestination.CITY_ID_ARG).orEmpty()
 
@@ -49,6 +53,8 @@ class WeatherDetailViewModel @Inject constructor(
 
     private var hourlyForecast: List<HourlyForecast>? = null
     private var dailyForecast: List<DailyForecast>? = null
+    private var minutePrecipitation: MinutePrecipitationTimeline? = null
+    private var isMinutePrecipitationUnsupported = false
     private var alerts: List<WeatherAlert> = emptyList()
     private var airQuality: AirQuality? = null
     private var isAirQualityUnsupported = false
@@ -94,6 +100,13 @@ class WeatherDetailViewModel @Inject constructor(
         }
     }
 
+    fun retryMinutePrecipitationSection() {
+        val city = activeCity ?: return
+        viewModelScope.launch {
+            refreshMinutePrecipitationSection(city)
+        }
+    }
+
     fun retryAirQualitySection() {
         val city = activeCity ?: return
         viewModelScope.launch {
@@ -105,6 +118,8 @@ class WeatherDetailViewModel @Inject constructor(
         activeCity = city
         hourlyForecast = null
         dailyForecast = null
+        minutePrecipitation = null
+        isMinutePrecipitationUnsupported = false
         alerts = emptyList()
         airQuality = null
         isAirQualityUnsupported = false
@@ -113,6 +128,7 @@ class WeatherDetailViewModel @Inject constructor(
         startForecastObservation(city.id)
         viewModelScope.launch { refreshHourlySection(city.id) }
         viewModelScope.launch { refreshDailySection(city.id) }
+        viewModelScope.launch { refreshMinutePrecipitationSection(city) }
         viewModelScope.launch { refreshAlertsSection(city) }
         viewModelScope.launch { refreshAirQualitySection(city) }
     }
@@ -188,6 +204,42 @@ class WeatherDetailViewModel @Inject constructor(
         emitStateIfReady()
     }
 
+    private suspend fun refreshMinutePrecipitationSection(city: City) {
+        val result = runCatching {
+            getMinutePrecipitationUseCase(
+                latitude = city.lat,
+                longitude = city.lon,
+            )
+        }
+        result.onFailure {
+            minutePrecipitation = null
+            isMinutePrecipitationUnsupported = false
+            unavailableSections.add(WeatherDetailSection.MinutePrecipitation)
+            emitStateIfReady()
+            return
+        }
+        when (val state = result.getOrThrow()) {
+            is MinutePrecipitationFetchResult.Available -> {
+                minutePrecipitation = state.timeline
+                isMinutePrecipitationUnsupported = false
+                unavailableSections.remove(WeatherDetailSection.MinutePrecipitation)
+            }
+
+            MinutePrecipitationFetchResult.UnsupportedRegion -> {
+                minutePrecipitation = null
+                isMinutePrecipitationUnsupported = true
+                unavailableSections.remove(WeatherDetailSection.MinutePrecipitation)
+            }
+
+            is MinutePrecipitationFetchResult.Failure -> {
+                minutePrecipitation = null
+                isMinutePrecipitationUnsupported = false
+                unavailableSections.add(WeatherDetailSection.MinutePrecipitation)
+            }
+        }
+        emitStateIfReady()
+    }
+
     private suspend fun refreshAirQualitySection(city: City) {
         val result = runCatching {
             getAirQualityUseCase(
@@ -238,6 +290,8 @@ class WeatherDetailViewModel @Inject constructor(
                     city = city,
                     hourlyForecast = hourly,
                     dailyForecast = daily,
+                    minutePrecipitation = minutePrecipitation,
+                    isMinutePrecipitationUnsupported = isMinutePrecipitationUnsupported,
                     alerts = alerts,
                     airQuality = airQuality,
                     isAirQualityUnsupported = isAirQualityUnsupported,
@@ -249,6 +303,8 @@ class WeatherDetailViewModel @Inject constructor(
                     city = city,
                     hourlyForecast = hourly,
                     dailyForecast = daily,
+                    minutePrecipitation = minutePrecipitation,
+                    isMinutePrecipitationUnsupported = isMinutePrecipitationUnsupported,
                     alerts = alerts,
                     airQuality = airQuality,
                     isAirQualityUnsupported = isAirQualityUnsupported,

@@ -14,6 +14,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
@@ -226,8 +228,61 @@ class QWeatherWeatherRepository @Inject constructor(
         }
     }
 
+    override suspend fun fetchMinutePrecipitation(
+        latitude: String,
+        longitude: String,
+    ): MinutePrecipitationFetchResult {
+        check(qWeatherConfig.isConfigured) {
+            "Weather API is not configured. Add api_key and api_host to local.properties."
+        }
+
+        val settings = settingsRepository.getCurrentSettings()
+        return try {
+            val response = weatherApiService.getMinutePrecipitation(
+                location = "$longitude,$latitude",
+                language = settings.language.apiCode,
+            )
+            when {
+                response.code == SUCCESS_CODE -> {
+                    response.toDomainOrNull()?.let { timeline ->
+                        MinutePrecipitationFetchResult.Available(timeline = timeline)
+                    } ?: MinutePrecipitationFetchResult.UnsupportedRegion
+                }
+
+                response.code == NO_DATA_CODE -> {
+                    MinutePrecipitationFetchResult.UnsupportedRegion
+                }
+
+                else -> {
+                    MinutePrecipitationFetchResult.Failure(MinutePrecipitationFailureReason.Unknown)
+                }
+            }
+        } catch (_: SocketTimeoutException) {
+            MinutePrecipitationFetchResult.Failure(MinutePrecipitationFailureReason.Timeout)
+        } catch (httpException: HttpException) {
+            when (httpException.code()) {
+                UNAUTHORIZED_STATUS_CODE -> {
+                    MinutePrecipitationFetchResult.Failure(
+                        MinutePrecipitationFailureReason.Unauthorized,
+                    )
+                }
+
+                QUOTA_EXCEEDED_STATUS_CODE -> {
+                    MinutePrecipitationFetchResult.Failure(
+                        MinutePrecipitationFailureReason.QuotaExceeded,
+                    )
+                }
+
+                else -> {
+                    MinutePrecipitationFetchResult.Failure(MinutePrecipitationFailureReason.Unknown)
+                }
+            }
+        }
+    }
+
     private companion object {
         private const val SUCCESS_CODE = "200"
+        private const val NO_DATA_CODE = "204"
         private const val UNAUTHORIZED_STATUS_CODE = 401
         private const val QUOTA_EXCEEDED_STATUS_CODE = 402
     }

@@ -8,6 +8,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationPoint
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
 import org.junit.Test
@@ -25,6 +27,7 @@ class WeatherDetailScreenScreenshotTest {
                 city = sampleCity(),
                 hourlyForecast = listOf(sampleHourlyForecast()),
                 dailyForecast = listOf(sampleDailyForecast()),
+                minutePrecipitation = sampleMinutePrecipitationTimeline(),
                 alerts = listOf(sampleAlert()),
                 airQuality = sampleAirQuality(),
             ),
@@ -39,11 +42,14 @@ class WeatherDetailScreenScreenshotTest {
                 city = sampleCity(),
                 hourlyForecast = emptyList(),
                 dailyForecast = listOf(sampleDailyForecast()),
+                minutePrecipitation = null,
+                isMinutePrecipitationUnsupported = false,
                 alerts = emptyList(),
                 airQuality = null,
                 isAirQualityUnsupported = false,
                 unavailableSections = setOf(
                     WeatherDetailSection.HourlyForecast,
+                    WeatherDetailSection.MinutePrecipitation,
                     WeatherDetailSection.AirQuality,
                 ),
             ),
@@ -68,6 +74,7 @@ class WeatherDetailScreenScreenshotTest {
                         uiState = WeatherDetailUiState(state = state),
                         onRetryHourly = {},
                         onRetryDaily = {},
+                        onRetryMinutePrecipitation = {},
                         onRetryAlerts = {},
                         onRetryAirQuality = {},
                         onRetryAll = {},
@@ -138,6 +145,20 @@ class WeatherDetailScreenScreenshotTest {
             type = "rainstorm",
             typeName = "Rainstorm",
             text = "Expect heavy rain in the next 6 hours.",
+        )
+    }
+
+    private fun sampleMinutePrecipitationTimeline(): MinutePrecipitationTimeline {
+        return MinutePrecipitationTimeline(
+            updateTime = "2026-04-09T14:00+08:00",
+            summary = "Rain expected in 30 minutes.",
+            points = listOf(
+                MinutePrecipitationPoint(
+                    forecastTime = "2026-04-09T14:05+08:00",
+                    precipitation = "0.0",
+                    type = "rain",
+                ),
+            ),
         )
     }
 

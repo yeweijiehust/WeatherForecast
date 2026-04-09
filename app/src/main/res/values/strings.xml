@@ -97,6 +97,12 @@
     <string name="detail_daily_item">%1$s  •  High %2$s° / Low %3$s°  •  %4$s</string>
     <string name="detail_daily_precip">Precip %1$s mm  •  POP %2$s%%</string>
     <string name="detail_daily_wind">Wind %1$s  •  Scale %2$s  •  %3$s km/h</string>
+    <string name="detail_minutely_title">Minute precipitation</string>
+    <string name="detail_minutely_empty">Minute precipitation data is currently empty.</string>
+    <string name="detail_minutely_unavailable">Minute precipitation data is temporarily unavailable.</string>
+    <string name="detail_minutely_unsupported_region">Minute precipitation is not supported for this region.</string>
+    <string name="detail_minutely_summary">Summary: %1$s</string>
+    <string name="detail_minutely_item">%1$s  •  %2$s mm  •  Type %3$s</string>
     <string name="detail_alert_section_title">Weather alerts</string>
     <string name="detail_alert_count">%1$d active alert(s)</string>
     <string name="detail_alert_empty">No active weather alerts.</string>

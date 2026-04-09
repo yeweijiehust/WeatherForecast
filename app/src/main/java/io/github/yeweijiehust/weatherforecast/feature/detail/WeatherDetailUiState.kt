@@ -4,6 +4,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 
 data class WeatherDetailUiState(
@@ -17,6 +18,8 @@ sealed interface WeatherDetailState {
         val city: City,
         val hourlyForecast: List<HourlyForecast> = emptyList(),
         val dailyForecast: List<DailyForecast> = emptyList(),
+        val minutePrecipitation: MinutePrecipitationTimeline? = null,
+        val isMinutePrecipitationUnsupported: Boolean = false,
         val alerts: List<WeatherAlert> = emptyList(),
         val airQuality: AirQuality? = null,
         val isAirQualityUnsupported: Boolean = false,
@@ -26,6 +29,8 @@ sealed interface WeatherDetailState {
         val city: City,
         val hourlyForecast: List<HourlyForecast> = emptyList(),
         val dailyForecast: List<DailyForecast> = emptyList(),
+        val minutePrecipitation: MinutePrecipitationTimeline? = null,
+        val isMinutePrecipitationUnsupported: Boolean = false,
         val alerts: List<WeatherAlert> = emptyList(),
         val airQuality: AirQuality? = null,
         val isAirQualityUnsupported: Boolean = false,
