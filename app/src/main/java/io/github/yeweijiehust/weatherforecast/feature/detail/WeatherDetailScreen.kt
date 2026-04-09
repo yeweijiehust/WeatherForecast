@@ -221,37 +221,39 @@ private fun HourlySection(
                     shape = MaterialTheme.shapes.medium,
                     tonalElevation = 1.dp,
                 ) {
-                    Text(
-                        text = localizedStringResource(
-                            R.string.detail_hourly_item,
-                            item.forecastTime,
-                            item.temperature,
-                            item.conditionText,
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
+                    Column(
                         modifier = Modifier.padding(12.dp),
-                    )
-                    Text(
-                        text = localizedStringResource(
-                            R.string.detail_hourly_precip,
-                            item.precipitation,
-                            item.precipitationProbability,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 6.dp),
-                    )
-                    Text(
-                        text = localizedStringResource(
-                            R.string.detail_hourly_wind,
-                            item.windDirection,
-                            item.windScale,
-                            item.windSpeed,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-                    )
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = localizedStringResource(
+                                R.string.detail_hourly_item,
+                                item.forecastTime,
+                                item.temperature,
+                                item.conditionText,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = localizedStringResource(
+                                R.string.detail_hourly_precip,
+                                item.precipitation,
+                                item.precipitationProbability,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = localizedStringResource(
+                                R.string.detail_hourly_wind,
+                                item.windDirection,
+                                item.windScale,
+                                item.windSpeed,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
@@ -289,38 +291,40 @@ private fun DailySection(
                     shape = MaterialTheme.shapes.medium,
                     tonalElevation = 1.dp,
                 ) {
-                    Text(
-                        text = localizedStringResource(
-                            R.string.detail_daily_item,
-                            item.forecastDate,
-                            item.tempMax,
-                            item.tempMin,
-                            item.conditionTextDay,
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
+                    Column(
                         modifier = Modifier.padding(12.dp),
-                    )
-                    Text(
-                        text = localizedStringResource(
-                            R.string.detail_daily_precip,
-                            item.precipitation,
-                            item.precipitationProbability,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 6.dp),
-                    )
-                    Text(
-                        text = localizedStringResource(
-                            R.string.detail_daily_wind,
-                            item.windDirectionDay,
-                            item.windScaleDay,
-                            item.windSpeedDay,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-                    )
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = localizedStringResource(
+                                R.string.detail_daily_item,
+                                item.forecastDate,
+                                item.tempMax,
+                                item.tempMin,
+                                item.conditionTextDay,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = localizedStringResource(
+                                R.string.detail_daily_precip,
+                                item.precipitation,
+                                item.precipitationProbability,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = localizedStringResource(
+                                R.string.detail_daily_wind,
+                                item.windDirectionDay,
+                                item.windScaleDay,
+                                item.windSpeedDay,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
