@@ -11,6 +11,19 @@
 
 英文文档见 [README.md](README.md)。
 
+## 截图展示
+### 首页
+![首页截图](docs/screenshots/home-current-weather.png)
+
+### 城市搜索
+![城市搜索截图](docs/screenshots/search-results.png)
+
+### 设置
+![设置截图](docs/screenshots/settings-default.png)
+
+### 天气详情
+![天气详情截图](docs/screenshots/detail-content.png)
+
 ## 核心功能
 - **首页**
   - 当前天气卡片（温度、天气、体感、湿度、风况、降水、能见度）。

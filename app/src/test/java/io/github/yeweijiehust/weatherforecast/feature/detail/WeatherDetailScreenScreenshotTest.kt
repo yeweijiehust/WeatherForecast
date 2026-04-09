@@ -18,9 +18,11 @@ import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [35])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class WeatherDetailScreenScreenshotTest {
     @Test
     fun contentState_capturesDetailLayout() {

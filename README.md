@@ -11,6 +11,19 @@ Android weather app built with Kotlin + Jetpack Compose, using QWeather APIs for
 
 For Chinese documentation, see [README.zh-CN.md](README.zh-CN.md).
 
+## Screenshots
+### Home
+![Home Screen](docs/screenshots/home-current-weather.png)
+
+### Search Cities
+![Search Screen](docs/screenshots/search-results.png)
+
+### Settings
+![Settings Screen](docs/screenshots/settings-default.png)
+
+### Weather Detail
+![Detail Screen](docs/screenshots/detail-content.png)
+
 ## Feature Highlights
 - **Home**
   - Current weather snapshot (temperature, condition, feels-like, humidity, wind, precipitation, visibility).
