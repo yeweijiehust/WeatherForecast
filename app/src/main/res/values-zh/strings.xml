@@ -40,6 +40,17 @@
     <string name="home_daily_empty">当前暂无逐日预报。</string>
     <string name="home_daily_temp_range">最高 %1$s° / 最低 %2$s°</string>
     <string name="home_daily_pop">降水概率 %1$s%%</string>
+    <string name="home_secondary_summary_title">快速摘要</string>
+    <string name="home_alert_summary_title">预警摘要</string>
+    <string name="home_alert_summary_loading">正在检查天气预警…</string>
+    <string name="home_alert_summary_active">当前有 %1$d 条预警</string>
+    <string name="home_alert_summary_none">当前无生效预警</string>
+    <string name="home_alert_summary_unavailable">预警数据不可用</string>
+    <string name="home_aqi_summary_title">空气质量摘要</string>
+    <string name="home_aqi_summary_loading">正在检查空气质量…</string>
+    <string name="home_aqi_summary_value">AQI %1$s（%2$s）</string>
+    <string name="home_aqi_summary_unsupported">该地区不支持空气质量</string>
+    <string name="home_aqi_summary_unavailable">空气质量数据不可用</string>
 
     <string name="search_title">查找城市</string>
     <string name="search_description">按城市名称搜索，查看清晰的区分结果。</string>

@@ -140,6 +140,18 @@ class HomeScreenScreenshotTest {
                     fetchedAtEpochMillis = 100L,
                 ),
             ),
+            secondarySummary = HomeSecondarySummary(
+                alerts = HomeAlertsSummary(
+                    activeAlertCount = 2,
+                    isUnavailable = false,
+                ),
+                airQuality = HomeAirQualitySummary(
+                    aqi = "53",
+                    category = "Good",
+                    isUnsupportedRegion = false,
+                    isUnavailable = false,
+                ),
+            ),
             lastUpdatedEpochMillis = 100L,
         )
     }

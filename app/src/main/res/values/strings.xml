@@ -40,6 +40,17 @@
     <string name="home_daily_empty">Daily forecast is unavailable right now.</string>
     <string name="home_daily_temp_range">High %1$s° / Low %2$s°</string>
     <string name="home_daily_pop">POP %1$s%%</string>
+    <string name="home_secondary_summary_title">Quick Insights</string>
+    <string name="home_alert_summary_title">Alert Summary</string>
+    <string name="home_alert_summary_loading">Checking weather alerts…</string>
+    <string name="home_alert_summary_active">%1$d active alert(s)</string>
+    <string name="home_alert_summary_none">No active weather alerts</string>
+    <string name="home_alert_summary_unavailable">Alert data unavailable</string>
+    <string name="home_aqi_summary_title">Air Quality Summary</string>
+    <string name="home_aqi_summary_loading">Checking air quality…</string>
+    <string name="home_aqi_summary_value">AQI %1$s (%2$s)</string>
+    <string name="home_aqi_summary_unsupported">Air quality unsupported in this region</string>
+    <string name="home_aqi_summary_unavailable">Air quality data unavailable</string>
 
     <string name="search_title">Find a city</string>
     <string name="search_description">Search by city name to see clear, disambiguated results.</string>

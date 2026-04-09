@@ -42,7 +42,25 @@ data class HomeSnapshot(
     val currentWeather: CurrentWeather,
     val hourlyForecast: List<HourlyForecast>,
     val dailyForecast: List<DailyForecast>,
+    val secondarySummary: HomeSecondarySummary = HomeSecondarySummary(),
     val lastUpdatedEpochMillis: Long,
+)
+
+data class HomeSecondarySummary(
+    val alerts: HomeAlertsSummary = HomeAlertsSummary(),
+    val airQuality: HomeAirQualitySummary = HomeAirQualitySummary(),
+)
+
+data class HomeAlertsSummary(
+    val activeAlertCount: Int? = null,
+    val isUnavailable: Boolean = false,
+)
+
+data class HomeAirQualitySummary(
+    val aqi: String? = null,
+    val category: String? = null,
+    val isUnsupportedRegion: Boolean = false,
+    val isUnavailable: Boolean = false,
 )
 
 sealed interface HomeEvent {

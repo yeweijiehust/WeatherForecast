@@ -66,6 +66,9 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("POP 20%").assertIsDisplayed()
         composeTestRule.onNodeWithText("Next 7 Days").assertIsDisplayed()
         composeTestRule.onNodeWithText("Last updated", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Quick Insights").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2 active alert(s)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("AQI 53 (Good)").assertIsDisplayed()
     }
 
     @Test
@@ -215,6 +218,18 @@ class HomeScreenTest {
                     windScaleDay = "3",
                     windSpeedDay = "16",
                     fetchedAtEpochMillis = 100L,
+                ),
+            ),
+            secondarySummary = HomeSecondarySummary(
+                alerts = HomeAlertsSummary(
+                    activeAlertCount = 2,
+                    isUnavailable = false,
+                ),
+                airQuality = HomeAirQualitySummary(
+                    aqi = "53",
+                    category = "Good",
+                    isUnsupportedRegion = false,
+                    isUnavailable = false,
                 ),
             ),
             lastUpdatedEpochMillis = 100L,

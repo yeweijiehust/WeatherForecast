@@ -242,6 +242,10 @@ private fun ContentState(
                     isStaleCache = isStaleCache,
                 )
                 SecondaryMetricsBlock(currentWeather = snapshot.currentWeather)
+                SecondarySummarySection(
+                    summary = snapshot.secondarySummary,
+                    onOpenDetail = { onOpenDetail(snapshot.city.id) },
+                )
                 HourlyForecastSection(hourlyForecast = snapshot.hourlyForecast)
                 DailyForecastSection(dailyForecast = snapshot.dailyForecast)
             }
@@ -250,9 +254,6 @@ private fun ContentState(
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Button(onClick = { onOpenDetail(snapshot.city.id) }) {
-            Text(text = localizedStringResource(R.string.home_view_details))
-        }
         Button(onClick = onManageCitiesClick) {
             Text(text = localizedStringResource(R.string.home_manage_saved_cities))
         }
@@ -423,7 +424,87 @@ private fun SecondaryMetricsBlock(
 }
 
 @Composable
+private fun SecondarySummarySection(
+    summary: HomeSecondarySummary,
+    onOpenDetail: () -> Unit,
+) {
+    Text(
+        text = localizedStringResource(R.string.home_secondary_summary_title),
+        style = MaterialTheme.typography.titleLarge,
+    )
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        val isWide = maxWidth >= 680.dp
+        if (isWide) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SummaryCard(
+                    modifier = Modifier.weight(1f),
+                    label = localizedStringResource(R.string.home_alert_summary_title),
+                    value = summary.alerts.summaryValue(),
+                )
+                SummaryCard(
+                    modifier = Modifier.weight(1f),
+                    label = localizedStringResource(R.string.home_aqi_summary_title),
+                    value = summary.airQuality.summaryValue(),
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SummaryCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    label = localizedStringResource(R.string.home_alert_summary_title),
+                    value = summary.alerts.summaryValue(),
+                )
+                SummaryCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    label = localizedStringResource(R.string.home_aqi_summary_title),
+                    value = summary.airQuality.summaryValue(),
+                )
+            }
+        }
+    }
+    Button(onClick = onOpenDetail) {
+        Text(text = localizedStringResource(R.string.home_view_details))
+    }
+}
+
+@Composable
 private fun MetricCard(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: String,
+) {
+    Card(
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SummaryCard(
     modifier: Modifier = Modifier,
     label: String,
     value: String,
@@ -625,4 +706,33 @@ private fun Long.formattedLastUpdatedTime(): String {
                 .withLocale(Locale.getDefault()),
         )
     }.getOrDefault(this.toString())
+}
+
+@Composable
+private fun HomeAlertsSummary.summaryValue(): String {
+    return when {
+        isUnavailable -> localizedStringResource(R.string.home_alert_summary_unavailable)
+        activeAlertCount == null -> localizedStringResource(R.string.home_alert_summary_loading)
+        activeAlertCount > 0 -> localizedStringResource(
+            R.string.home_alert_summary_active,
+            activeAlertCount,
+        )
+
+        else -> localizedStringResource(R.string.home_alert_summary_none)
+    }
+}
+
+@Composable
+private fun HomeAirQualitySummary.summaryValue(): String {
+    return when {
+        isUnavailable -> localizedStringResource(R.string.home_aqi_summary_unavailable)
+        isUnsupportedRegion -> localizedStringResource(R.string.home_aqi_summary_unsupported)
+        !aqi.isNullOrBlank() -> localizedStringResource(
+            R.string.home_aqi_summary_value,
+            aqi,
+            category.orEmpty().ifBlank { "--" },
+        )
+
+        else -> localizedStringResource(R.string.home_aqi_summary_loading)
+    }
 }

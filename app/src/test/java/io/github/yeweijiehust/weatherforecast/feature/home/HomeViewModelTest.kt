@@ -8,14 +8,18 @@ import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveCurrentWeatherUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDailyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDefaultCityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveHourlyForecastUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetAirQualityUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherAlertsUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshCurrentWeatherUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshDailyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshHourlyForecastUseCase
@@ -277,6 +281,65 @@ class HomeViewModelTest {
         }
     }
 
+    @Test
+    fun state_includesSecondarySummaryWhenAlertsAndAqiAvailable() = runTest {
+        val defaultCity = sampleCity()
+        val repository = FakeWeatherRepository(
+            currentWeather = sampleCurrentWeather(defaultCity.id),
+            hourlyForecast = listOf(sampleHourlyForecast(defaultCity.id)),
+            dailyForecast = listOf(sampleDailyForecast(defaultCity.id)),
+            weatherAlertsResult = WeatherAlertFetchResult.Available(
+                alerts = listOf(sampleWeatherAlert()),
+            ),
+            airQualityResult = AirQualityFetchResult.Available(
+                airQuality = sampleAirQuality(),
+            ),
+        )
+        val viewModel = createViewModel(
+            defaultCity = defaultCity,
+            weatherRepository = repository,
+        )
+
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value.state
+        assertThat(state).isInstanceOf(HomeState.Content::class.java)
+        val snapshot = (state as HomeState.Content).snapshot
+        assertThat(snapshot.secondarySummary.alerts.activeAlertCount).isEqualTo(1)
+        assertThat(snapshot.secondarySummary.alerts.isUnavailable).isFalse()
+        assertThat(snapshot.secondarySummary.airQuality.aqi).isEqualTo("53")
+        assertThat(snapshot.secondarySummary.airQuality.category).isEqualTo("Good")
+        assertThat(snapshot.secondarySummary.airQuality.isUnsupportedRegion).isFalse()
+        assertThat(snapshot.secondarySummary.airQuality.isUnavailable).isFalse()
+    }
+
+    @Test
+    fun state_marksSecondarySummaryUnavailableWhenFetchFails() = runTest {
+        val defaultCity = sampleCity()
+        val repository = FakeWeatherRepository(
+            currentWeather = sampleCurrentWeather(defaultCity.id),
+            hourlyForecast = listOf(sampleHourlyForecast(defaultCity.id)),
+            dailyForecast = listOf(sampleDailyForecast(defaultCity.id)),
+            failNextAlertsFetch = true,
+            failNextAirQualityFetch = true,
+        )
+        val viewModel = createViewModel(
+            defaultCity = defaultCity,
+            weatherRepository = repository,
+        )
+
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value.state
+        assertThat(state).isInstanceOf(HomeState.Content::class.java)
+        val snapshot = (state as HomeState.Content).snapshot
+        assertThat(snapshot.secondarySummary.alerts.activeAlertCount).isNull()
+        assertThat(snapshot.secondarySummary.alerts.isUnavailable).isTrue()
+        assertThat(snapshot.secondarySummary.airQuality.aqi).isNull()
+        assertThat(snapshot.secondarySummary.airQuality.isUnavailable).isTrue()
+        assertThat(snapshot.secondarySummary.airQuality.isUnsupportedRegion).isFalse()
+    }
+
     private fun createViewModel(
         defaultCity: City?,
         weatherRepository: FakeWeatherRepository = FakeWeatherRepository(),
@@ -291,6 +354,8 @@ class HomeViewModelTest {
             refreshCurrentWeatherUseCase = RefreshCurrentWeatherUseCase(weatherRepository),
             refreshHourlyForecastUseCase = RefreshHourlyForecastUseCase(weatherRepository),
             refreshDailyForecastUseCase = RefreshDailyForecastUseCase(weatherRepository),
+            getWeatherAlertsUseCase = GetWeatherAlertsUseCase(weatherRepository),
+            getAirQualityUseCase = GetAirQualityUseCase(weatherRepository),
         )
     }
 
@@ -360,6 +425,38 @@ class HomeViewModelTest {
         )
     }
 
+    private fun sampleWeatherAlert(): WeatherAlert {
+        return WeatherAlert(
+            id = "52f63dbf40f5f089f5f69f2d7f929f4f",
+            sender = "Shanghai Meteorological Center",
+            publishTime = "2026-04-08T12:00+08:00",
+            title = "Rainstorm Blue Warning",
+            startTime = "2026-04-08T12:00+08:00",
+            endTime = "2026-04-08T23:00+08:00",
+            status = "active",
+            severity = "Blue",
+            severityColor = "blue",
+            type = "rainstorm",
+            typeName = "Rainstorm",
+            text = "Expect heavy rain in the next 6 hours.",
+        )
+    }
+
+    private fun sampleAirQuality(): AirQuality {
+        return AirQuality(
+            publishTime = "2026-04-08T14:00+08:00",
+            aqi = "53",
+            category = "Good",
+            primary = "PM 2.5",
+            pm2p5 = "37.0",
+            pm10 = "47.57",
+            no2 = "18.0",
+            so2 = "--",
+            co = "--",
+            o3 = "--",
+        )
+    }
+
     private class FakeCityRepository(
         defaultCity: City?,
     ) : CityRepository {
@@ -387,6 +484,10 @@ class HomeViewModelTest {
         var failNextCurrentRefresh: Boolean = false,
         var failNextHourlyRefresh: Boolean = false,
         var failNextDailyRefresh: Boolean = false,
+        var failNextAlertsFetch: Boolean = false,
+        var failNextAirQualityFetch: Boolean = false,
+        var weatherAlertsResult: WeatherAlertFetchResult = WeatherAlertFetchResult.Empty,
+        var airQualityResult: AirQualityFetchResult = AirQualityFetchResult.UnsupportedRegion,
         var refreshDelayMillis: Long = 0L,
     ) : WeatherRepository {
         private val currentWeatherFlow = MutableStateFlow(currentWeather)
@@ -426,11 +527,23 @@ class HomeViewModelTest {
         override suspend fun fetchWeatherAlerts(
             latitude: String,
             longitude: String,
-        ): WeatherAlertFetchResult = WeatherAlertFetchResult.Empty
+        ): WeatherAlertFetchResult {
+            if (failNextAlertsFetch) {
+                failNextAlertsFetch = false
+                throw IllegalStateException("alerts-boom")
+            }
+            return weatherAlertsResult
+        }
 
         override suspend fun fetchAirQuality(
             latitude: String,
             longitude: String,
-        ): AirQualityFetchResult = AirQualityFetchResult.UnsupportedRegion
+        ): AirQualityFetchResult {
+            if (failNextAirQualityFetch) {
+                failNextAirQualityFetch = false
+                throw IllegalStateException("air-boom")
+            }
+            return airQualityResult
+        }
     }
 }

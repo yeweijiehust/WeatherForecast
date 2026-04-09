@@ -5,10 +5,14 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.yeweijiehust.weatherforecast.R
 import io.github.yeweijiehust.weatherforecast.core.ui.UiText
+import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.CurrentWeather
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetAirQualityUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherAlertsUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDailyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveCurrentWeatherUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDefaultCityUseCase
@@ -39,6 +43,8 @@ class HomeViewModel @Inject constructor(
     private val refreshCurrentWeatherUseCase: RefreshCurrentWeatherUseCase,
     private val refreshHourlyForecastUseCase: RefreshHourlyForecastUseCase,
     private val refreshDailyForecastUseCase: RefreshDailyForecastUseCase,
+    private val getWeatherAlertsUseCase: GetWeatherAlertsUseCase,
+    private val getAirQualityUseCase: GetAirQualityUseCase,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -49,6 +55,7 @@ class HomeViewModel @Inject constructor(
     private var refreshJob: Job? = null
     private var activeCity: City? = null
     private var latestSnapshot: HomeSnapshot? = null
+    private var latestSecondarySummary = HomeSecondarySummary()
     private var isRefreshing = false
     private var isStaleCache = false
 
@@ -59,6 +66,7 @@ class HomeViewModel @Inject constructor(
                 refreshJob?.cancel()
                 latestSnapshot = null
                 activeCity = city
+                latestSecondarySummary = HomeSecondarySummary()
                 isRefreshing = false
                 isStaleCache = false
                 when (city) {
@@ -90,6 +98,7 @@ class HomeViewModel @Inject constructor(
                         currentWeather = currentWeather,
                         hourlyForecast = hourlyForecast,
                         dailyForecast = dailyForecast,
+                        secondarySummary = latestSecondarySummary,
                         lastUpdatedEpochMillis = latestUpdatedAt(
                             currentWeather = currentWeather,
                             hourlyForecast = hourlyForecast,
@@ -124,7 +133,10 @@ class HomeViewModel @Inject constructor(
                 )
             }
 
-            val refreshOutcome = refreshCurrentHourlyDailyWeather(city.id)
+            val refreshRunOutcome = refreshCurrentHourlyDailyAndSecondaryWeather(city)
+            val refreshOutcome = refreshRunOutcome.refreshOutcome
+            latestSecondarySummary = refreshRunOutcome.secondarySummary
+            updateSnapshotWithSecondarySummary(city.id)
             isRefreshing = false
             when {
                 !refreshOutcome.currentSuccess && latestSnapshotFor(city.id) != null -> {
@@ -167,6 +179,23 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private fun updateSnapshotWithSecondarySummary(cityId: String) {
+        val snapshot = latestSnapshotFor(cityId) ?: return
+        val updatedSnapshot = snapshot.copy(
+            secondarySummary = latestSecondarySummary,
+        )
+        latestSnapshot = updatedSnapshot
+        val state = _uiState.value.state
+        _uiState.value = HomeUiState(
+            state = when (state) {
+                is HomeState.Content -> HomeState.Content(updatedSnapshot)
+                is HomeState.Refreshing -> HomeState.Refreshing(updatedSnapshot)
+                is HomeState.ContentWithStaleCache -> HomeState.ContentWithStaleCache(updatedSnapshot)
+                else -> state
+            },
+        )
+    }
+
     private fun latestSnapshotFor(cityId: String): HomeSnapshot? {
         val snapshot = latestSnapshot
         return if (snapshot?.city?.id == cityId) snapshot else null
@@ -184,16 +213,43 @@ class HomeViewModel @Inject constructor(
         }.maxOrNull() ?: currentWeather.fetchedAtEpochMillis
     }
 
-    private suspend fun refreshCurrentHourlyDailyWeather(cityId: String): RefreshOutcome = coroutineScope {
-        val currentRefresh = async { runCatching { refreshCurrentWeatherUseCase(cityId) } }
-        val hourlyRefresh = async { runCatching { refreshHourlyForecastUseCase(cityId) } }
-        val dailyRefresh = async { runCatching { refreshDailyForecastUseCase(cityId) } }
-        RefreshOutcome(
-            currentSuccess = currentRefresh.await().isSuccess,
-            hourlySuccess = hourlyRefresh.await().isSuccess,
-            dailySuccess = dailyRefresh.await().isSuccess,
+    private suspend fun refreshCurrentHourlyDailyAndSecondaryWeather(city: City): RefreshRunOutcome = coroutineScope {
+        val currentRefresh = async { runCatching { refreshCurrentWeatherUseCase(city.id) } }
+        val hourlyRefresh = async { runCatching { refreshHourlyForecastUseCase(city.id) } }
+        val dailyRefresh = async { runCatching { refreshDailyForecastUseCase(city.id) } }
+        val alertsRefresh = async {
+            runCatching {
+                getWeatherAlertsUseCase(
+                    latitude = city.lat,
+                    longitude = city.lon,
+                )
+            }
+        }
+        val airQualityRefresh = async {
+            runCatching {
+                getAirQualityUseCase(
+                    latitude = city.lat,
+                    longitude = city.lon,
+                )
+            }
+        }
+        RefreshRunOutcome(
+            refreshOutcome = RefreshOutcome(
+                currentSuccess = currentRefresh.await().isSuccess,
+                hourlySuccess = hourlyRefresh.await().isSuccess,
+                dailySuccess = dailyRefresh.await().isSuccess,
+            ),
+            secondarySummary = HomeSecondarySummary(
+                alerts = alertsRefresh.await().toHomeAlertsSummary(),
+                airQuality = airQualityRefresh.await().toHomeAirQualitySummary(),
+            ),
         )
     }
+
+    private data class RefreshRunOutcome(
+        val refreshOutcome: RefreshOutcome,
+        val secondarySummary: HomeSecondarySummary,
+    )
 
     private data class RefreshOutcome(
         val currentSuccess: Boolean,
@@ -209,6 +265,69 @@ class HomeViewModel @Inject constructor(
 
         val isAllSuccess: Boolean
             get() = currentSuccess && hourlySuccess && dailySuccess
+    }
+
+    private fun Result<WeatherAlertFetchResult>.toHomeAlertsSummary(): HomeAlertsSummary {
+        if (isFailure) {
+            return HomeAlertsSummary(
+                activeAlertCount = null,
+                isUnavailable = true,
+            )
+        }
+        return when (val result = getOrThrow()) {
+            is WeatherAlertFetchResult.Available -> {
+                HomeAlertsSummary(
+                    activeAlertCount = result.alerts.size,
+                    isUnavailable = false,
+                )
+            }
+
+            WeatherAlertFetchResult.Empty -> {
+                HomeAlertsSummary(
+                    activeAlertCount = 0,
+                    isUnavailable = false,
+                )
+            }
+        }
+    }
+
+    private fun Result<AirQualityFetchResult>.toHomeAirQualitySummary(): HomeAirQualitySummary {
+        if (isFailure) {
+            return HomeAirQualitySummary(
+                aqi = null,
+                category = null,
+                isUnsupportedRegion = false,
+                isUnavailable = true,
+            )
+        }
+        return when (val result = getOrThrow()) {
+            is AirQualityFetchResult.Available -> {
+                HomeAirQualitySummary(
+                    aqi = result.airQuality.aqi,
+                    category = result.airQuality.category,
+                    isUnsupportedRegion = false,
+                    isUnavailable = false,
+                )
+            }
+
+            AirQualityFetchResult.UnsupportedRegion -> {
+                HomeAirQualitySummary(
+                    aqi = null,
+                    category = null,
+                    isUnsupportedRegion = true,
+                    isUnavailable = false,
+                )
+            }
+
+            is AirQualityFetchResult.Failure -> {
+                HomeAirQualitySummary(
+                    aqi = null,
+                    category = null,
+                    isUnsupportedRegion = false,
+                    isUnavailable = true,
+                )
+            }
+        }
     }
 
     private suspend fun emitRefreshFailedMessage() {
