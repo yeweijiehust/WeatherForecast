@@ -16,6 +16,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationPo
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunset
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndex
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndices
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
 import org.junit.Rule
 import org.junit.Test
@@ -41,6 +43,7 @@ class WeatherDetailScreenTest {
                     dailyForecast = listOf(sampleDailyForecast()),
                     minutePrecipitation = sampleMinutePrecipitationTimeline(),
                     sunriseSunset = sampleSunriseSunset(),
+                    weatherIndices = sampleWeatherIndices(),
                     alerts = listOf(sampleAlert()),
                     airQuality = sampleAirQuality(),
                 ),
@@ -52,15 +55,18 @@ class WeatherDetailScreenTest {
         composeTestRule.onNodeWithText("Daily forecast").assertIsDisplayed()
         composeTestRule.onNodeWithText("Minute precipitation").assertIsDisplayed()
         composeTestRule.onNodeWithText("Summary: Rain expected in 30 minutes.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Sunrise and sunset").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Sunrise: 2026-04-09T05:34+08:00").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Sunset: 2026-04-09T18:18+08:00").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Weather alerts").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Rainstorm Blue Warning").assertIsDisplayed()
-        composeTestRule.onNodeWithText("1 active alert(s)").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Air quality").assertIsDisplayed()
-        composeTestRule.onNodeWithText("AQI 86 (Moderate)").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Primary pollutant: pm2p5").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Sunrise and sunset").assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Sunrise: 2026-04-09T05:34+08:00").assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Sunset: 2026-04-09T18:18+08:00").assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Weather indices").assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("UV Index", substring = true).assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Use basic sunscreen.", substring = true).assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Weather alerts").assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Rainstorm Blue Warning").assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("1 active alert(s)").assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Air quality").assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("AQI 86 (Moderate)").assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Primary pollutant: pm2p5").assertCountEquals(1)
         composeTestRule.onAllNodesWithText("Pollutant breakdown").assertCountEquals(1)
         composeTestRule.onAllNodesWithText("PM2.5").assertCountEquals(1)
         composeTestRule.onAllNodesWithText("65").assertCountEquals(1)
@@ -80,10 +86,12 @@ class WeatherDetailScreenTest {
                     minutePrecipitation = null,
                     isMinutePrecipitationUnsupported = false,
                     sunriseSunset = null,
+                    weatherIndices = null,
                     unavailableSections = setOf(
                         WeatherDetailSection.HourlyForecast,
                         WeatherDetailSection.MinutePrecipitation,
                         WeatherDetailSection.Astronomy,
+                        WeatherDetailSection.Indices,
                         WeatherDetailSection.AirQuality,
                     ),
                 ),
@@ -97,6 +105,8 @@ class WeatherDetailScreenTest {
         composeTestRule.onNodeWithText("Minute precipitation data is temporarily unavailable.")
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Sunrise and sunset data is temporarily unavailable.")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Weather indices data is temporarily unavailable.")
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Air quality data is temporarily unavailable.")
             .assertIsDisplayed()
@@ -116,6 +126,7 @@ class WeatherDetailScreenTest {
                     alerts = emptyList(),
                     airQuality = null,
                     isAirQualityUnsupported = true,
+                    weatherIndices = null,
                 ),
             ),
         )
@@ -135,6 +146,7 @@ class WeatherDetailScreenTest {
                         onRetryDaily = {},
                         onRetryMinutePrecipitation = {},
                         onRetryAstronomy = {},
+                        onRetryIndices = {},
                         onRetryAlerts = {},
                         onRetryAirQuality = {},
                         onRetryAll = {},
@@ -227,6 +239,22 @@ class WeatherDetailScreenTest {
             updateTime = "2026-04-09T11:00+08:00",
             sunrise = "2026-04-09T05:34+08:00",
             sunset = "2026-04-09T18:18+08:00",
+        )
+    }
+
+    private fun sampleWeatherIndices(): WeatherIndices {
+        return WeatherIndices(
+            updateTime = "2026-04-09T13:57+08:00",
+            items = listOf(
+                WeatherIndex(
+                    date = "2026-04-09",
+                    type = "5",
+                    name = "UV Index",
+                    level = "2",
+                    category = "Low",
+                    text = "Use basic sunscreen.",
+                ),
+            ),
         )
     }
 

@@ -6,6 +6,7 @@ import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResp
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.MinutePrecipitationResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.SunriseSunsetResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherIndicesResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertResponseDto
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -59,4 +60,11 @@ interface WeatherApiService {
         @Query("date") date: String,
         @Query("lang") language: String,
     ): SunriseSunsetResponseDto
+
+    @GET("v7/indices/1d")
+    suspend fun getWeatherIndices(
+        @Query("type") type: String,
+        @Query("location") locationId: String,
+        @Query("lang") language: String,
+    ): WeatherIndicesResponseDto
 }

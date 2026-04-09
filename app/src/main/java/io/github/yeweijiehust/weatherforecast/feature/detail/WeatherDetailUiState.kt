@@ -7,6 +7,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunset
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndices
 
 data class WeatherDetailUiState(
     val state: WeatherDetailState = WeatherDetailState.Loading,
@@ -22,6 +23,7 @@ sealed interface WeatherDetailState {
         val minutePrecipitation: MinutePrecipitationTimeline? = null,
         val isMinutePrecipitationUnsupported: Boolean = false,
         val sunriseSunset: SunriseSunset? = null,
+        val weatherIndices: WeatherIndices? = null,
         val alerts: List<WeatherAlert> = emptyList(),
         val airQuality: AirQuality? = null,
         val isAirQualityUnsupported: Boolean = false,
@@ -34,6 +36,7 @@ sealed interface WeatherDetailState {
         val minutePrecipitation: MinutePrecipitationTimeline? = null,
         val isMinutePrecipitationUnsupported: Boolean = false,
         val sunriseSunset: SunriseSunset? = null,
+        val weatherIndices: WeatherIndices? = null,
         val alerts: List<WeatherAlert> = emptyList(),
         val airQuality: AirQuality? = null,
         val isAirQualityUnsupported: Boolean = false,

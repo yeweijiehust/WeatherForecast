@@ -19,6 +19,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationFe
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFailureReason
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndicesFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndicesFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
 import java.net.SocketTimeoutException
@@ -321,10 +323,62 @@ class QWeatherWeatherRepository @Inject constructor(
         }
     }
 
+    override suspend fun fetchWeatherIndices(
+        locationId: String,
+    ): WeatherIndicesFetchResult {
+        check(qWeatherConfig.isConfigured) {
+            "Weather API is not configured. Add api_key and api_host to local.properties."
+        }
+
+        val settings = settingsRepository.getCurrentSettings()
+        return try {
+            val response = weatherApiService.getWeatherIndices(
+                type = INDEX_TYPE_ALL,
+                locationId = locationId,
+                language = settings.language.apiCode,
+            )
+            when {
+                response.code == SUCCESS_CODE -> {
+                    val weatherIndices = response.toDomain()
+                    if (weatherIndices.items.isEmpty()) {
+                        WeatherIndicesFetchResult.Empty
+                    } else {
+                        WeatherIndicesFetchResult.Available(weatherIndices = weatherIndices)
+                    }
+                }
+
+                response.code == NO_DATA_CODE -> {
+                    WeatherIndicesFetchResult.Empty
+                }
+
+                else -> {
+                    WeatherIndicesFetchResult.Failure(WeatherIndicesFailureReason.Unknown)
+                }
+            }
+        } catch (_: SocketTimeoutException) {
+            WeatherIndicesFetchResult.Failure(WeatherIndicesFailureReason.Timeout)
+        } catch (httpException: HttpException) {
+            when (httpException.code()) {
+                UNAUTHORIZED_STATUS_CODE -> {
+                    WeatherIndicesFetchResult.Failure(WeatherIndicesFailureReason.Unauthorized)
+                }
+
+                QUOTA_EXCEEDED_STATUS_CODE -> {
+                    WeatherIndicesFetchResult.Failure(WeatherIndicesFailureReason.QuotaExceeded)
+                }
+
+                else -> {
+                    WeatherIndicesFetchResult.Failure(WeatherIndicesFailureReason.Unknown)
+                }
+            }
+        }
+    }
+
     private companion object {
         private const val SUCCESS_CODE = "200"
         private const val NO_DATA_CODE = "204"
         private const val UNAUTHORIZED_STATUS_CODE = 401
         private const val QUOTA_EXCEEDED_STATUS_CODE = 402
+        private const val INDEX_TYPE_ALL = "0"
     }
 }

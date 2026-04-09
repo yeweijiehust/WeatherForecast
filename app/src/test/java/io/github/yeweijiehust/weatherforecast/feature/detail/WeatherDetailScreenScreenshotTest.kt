@@ -12,6 +12,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationPo
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunset
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndex
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndices
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,6 +32,7 @@ class WeatherDetailScreenScreenshotTest {
                 dailyForecast = listOf(sampleDailyForecast()),
                 minutePrecipitation = sampleMinutePrecipitationTimeline(),
                 sunriseSunset = sampleSunriseSunset(),
+                weatherIndices = sampleWeatherIndices(),
                 alerts = listOf(sampleAlert()),
                 airQuality = sampleAirQuality(),
             ),
@@ -47,6 +50,7 @@ class WeatherDetailScreenScreenshotTest {
                 minutePrecipitation = null,
                 isMinutePrecipitationUnsupported = false,
                 sunriseSunset = null,
+                weatherIndices = null,
                 alerts = emptyList(),
                 airQuality = null,
                 isAirQualityUnsupported = false,
@@ -54,6 +58,7 @@ class WeatherDetailScreenScreenshotTest {
                     WeatherDetailSection.HourlyForecast,
                     WeatherDetailSection.MinutePrecipitation,
                     WeatherDetailSection.Astronomy,
+                    WeatherDetailSection.Indices,
                     WeatherDetailSection.AirQuality,
                 ),
             ),
@@ -80,6 +85,7 @@ class WeatherDetailScreenScreenshotTest {
                         onRetryDaily = {},
                         onRetryMinutePrecipitation = {},
                         onRetryAstronomy = {},
+                        onRetryIndices = {},
                         onRetryAlerts = {},
                         onRetryAirQuality = {},
                         onRetryAll = {},
@@ -172,6 +178,22 @@ class WeatherDetailScreenScreenshotTest {
             updateTime = "2026-04-09T11:00+08:00",
             sunrise = "2026-04-09T05:34+08:00",
             sunset = "2026-04-09T18:18+08:00",
+        )
+    }
+
+    private fun sampleWeatherIndices(): WeatherIndices {
+        return WeatherIndices(
+            updateTime = "2026-04-09T13:57+08:00",
+            items = listOf(
+                WeatherIndex(
+                    date = "2026-04-09",
+                    type = "5",
+                    name = "UV Index",
+                    level = "2",
+                    category = "Low",
+                    text = "Use basic sunscreen.",
+                ),
+            ),
         )
     }
 

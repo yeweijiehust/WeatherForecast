@@ -15,6 +15,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFailureR
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndicesFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndicesFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.CityRepository
 import io.github.yeweijiehust.weatherforecast.domain.repository.WeatherRepository
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveCurrentWeatherUseCase
@@ -561,6 +563,12 @@ class HomeViewModelTest {
             date: String,
         ): SunriseSunsetFetchResult {
             return SunriseSunsetFetchResult.Failure(SunriseSunsetFailureReason.Unknown)
+        }
+
+        override suspend fun fetchWeatherIndices(
+            locationId: String,
+        ): WeatherIndicesFetchResult {
+            return WeatherIndicesFetchResult.Failure(WeatherIndicesFailureReason.Unknown)
         }
     }
 }

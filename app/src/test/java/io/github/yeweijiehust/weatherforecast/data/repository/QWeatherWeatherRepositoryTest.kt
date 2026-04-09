@@ -24,6 +24,8 @@ import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResp
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.MinutePrecipitationPointDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.MinutePrecipitationResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.SunriseSunsetResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherIndexDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherIndicesResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertEventTypeDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertMetadataDto
@@ -38,6 +40,8 @@ import io.github.yeweijiehust.weatherforecast.domain.model.UnitSystem
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFailureReason
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndicesFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndicesFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.repository.SettingsRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -439,6 +443,112 @@ class QWeatherWeatherRepositoryTest {
         assertThat(result).isEqualTo(
             SunriseSunsetFetchResult.Failure(
                 reason = SunriseSunsetFailureReason.Unauthorized,
+            ),
+        )
+    }
+
+    @Test
+    fun fetchWeatherIndices_requestsUsingConfiguredTypeLocationAndLanguage() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getWeatherIndices(
+                type = "0",
+                locationId = "101020100",
+                language = "zh",
+            )
+        } returns WeatherIndicesResponseDto(
+            code = "200",
+            updateTime = "2026-04-09T13:57+08:00",
+            daily = listOf(
+                WeatherIndexDto(
+                    date = "2026-04-09",
+                    type = "5",
+                    name = "UV Index",
+                    level = "2",
+                    category = "Low",
+                    text = "Use basic sunscreen.",
+                ),
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.SimplifiedChinese,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchWeatherIndices(locationId = "101020100")
+
+        coVerify(exactly = 1) {
+            weatherApiService.getWeatherIndices(
+                type = "0",
+                locationId = "101020100",
+                language = "zh",
+            )
+        }
+        assertThat(result).isInstanceOf(WeatherIndicesFetchResult.Available::class.java)
+        val available = result as WeatherIndicesFetchResult.Available
+        assertThat(available.weatherIndices.items).hasSize(1)
+        assertThat(available.weatherIndices.items.single().name).isEqualTo("UV Index")
+    }
+
+    @Test
+    fun fetchWeatherIndices_returnsEmptyWhenNoDailyItems() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getWeatherIndices(
+                type = "0",
+                locationId = "101020100",
+                language = "en",
+            )
+        } returns WeatherIndicesResponseDto(
+            code = "200",
+            updateTime = "2026-04-09T13:57+08:00",
+            daily = emptyList(),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchWeatherIndices(locationId = "101020100")
+
+        assertThat(result).isEqualTo(WeatherIndicesFetchResult.Empty)
+    }
+
+    @Test
+    fun fetchWeatherIndices_mapsUnauthorizedHttpStatusToFailure() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getWeatherIndices(
+                type = "0",
+                locationId = "101020100",
+                language = "en",
+            )
+        } throws httpException(statusCode = 401)
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchWeatherIndices(locationId = "101020100")
+
+        assertThat(result).isEqualTo(
+            WeatherIndicesFetchResult.Failure(
+                reason = WeatherIndicesFailureReason.Unauthorized,
             ),
         )
     }

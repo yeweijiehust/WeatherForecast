@@ -26,6 +26,7 @@ import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTimeline
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunset
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndices
 
 @Composable
 fun WeatherDetailRoute(
@@ -38,6 +39,7 @@ fun WeatherDetailRoute(
         onRetryDaily = viewModel::retryDailySection,
         onRetryMinutePrecipitation = viewModel::retryMinutePrecipitationSection,
         onRetryAstronomy = viewModel::retryAstronomySection,
+        onRetryIndices = viewModel::retryIndicesSection,
         onRetryAlerts = viewModel::retryAlertsSection,
         onRetryAirQuality = viewModel::retryAirQualitySection,
         onRetryAll = {
@@ -45,6 +47,7 @@ fun WeatherDetailRoute(
             viewModel.retryDailySection()
             viewModel.retryMinutePrecipitationSection()
             viewModel.retryAstronomySection()
+            viewModel.retryIndicesSection()
             viewModel.retryAlertsSection()
             viewModel.retryAirQualitySection()
         },
@@ -58,6 +61,7 @@ fun WeatherDetailScreen(
     onRetryDaily: () -> Unit,
     onRetryMinutePrecipitation: () -> Unit,
     onRetryAstronomy: () -> Unit,
+    onRetryIndices: () -> Unit,
     onRetryAlerts: () -> Unit,
     onRetryAirQuality: () -> Unit,
     onRetryAll: () -> Unit,
@@ -85,6 +89,7 @@ fun WeatherDetailScreen(
                     onRetryDaily = onRetryDaily,
                     onRetryMinutePrecipitation = onRetryMinutePrecipitation,
                     onRetryAstronomy = onRetryAstronomy,
+                    onRetryIndices = onRetryIndices,
                     onRetryAlerts = onRetryAlerts,
                     onRetryAirQuality = onRetryAirQuality,
                 )
@@ -103,6 +108,7 @@ fun WeatherDetailScreen(
                     onRetryDaily = onRetryDaily,
                     onRetryMinutePrecipitation = onRetryMinutePrecipitation,
                     onRetryAstronomy = onRetryAstronomy,
+                    onRetryIndices = onRetryIndices,
                     onRetryAlerts = onRetryAlerts,
                     onRetryAirQuality = onRetryAirQuality,
                 )
@@ -137,6 +143,7 @@ private fun DetailSections(
     onRetryDaily: () -> Unit,
     onRetryMinutePrecipitation: () -> Unit,
     onRetryAstronomy: () -> Unit,
+    onRetryIndices: () -> Unit,
     onRetryAlerts: () -> Unit,
     onRetryAirQuality: () -> Unit,
 ) {
@@ -174,6 +181,11 @@ private fun DetailSections(
                 isUnavailable = false,
                 onRetry = onRetryAstronomy,
             )
+            IndicesSection(
+                weatherIndices = state.weatherIndices,
+                isUnavailable = false,
+                onRetry = onRetryIndices,
+            )
             AlertSection(
                 alerts = state.alerts,
                 isUnavailable = false,
@@ -208,6 +220,11 @@ private fun DetailSections(
                 sunriseSunset = state.sunriseSunset,
                 isUnavailable = WeatherDetailSection.Astronomy in unavailableSections,
                 onRetry = onRetryAstronomy,
+            )
+            IndicesSection(
+                weatherIndices = state.weatherIndices,
+                isUnavailable = WeatherDetailSection.Indices in unavailableSections,
+                onRetry = onRetryIndices,
             )
             AlertSection(
                 alerts = state.alerts,
@@ -499,6 +516,80 @@ private fun AstronomySection(
                         ),
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IndicesSection(
+    weatherIndices: WeatherIndices?,
+    isUnavailable: Boolean,
+    onRetry: () -> Unit,
+) {
+    Text(
+        text = localizedStringResource(R.string.detail_indices_title),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    when {
+        isUnavailable -> SectionUnavailable(
+            message = localizedStringResource(R.string.detail_indices_unavailable),
+            onRetry = onRetry,
+        )
+
+        weatherIndices == null || weatherIndices.items.isEmpty() -> {
+            Text(
+                text = localizedStringResource(R.string.detail_indices_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        else -> {
+            if (weatherIndices.updateTime.isNotBlank()) {
+                Text(
+                    text = localizedStringResource(
+                        R.string.detail_indices_update_time,
+                        weatherIndices.updateTime,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            weatherIndices.items.forEach { index ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    tonalElevation = 1.dp,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = localizedStringResource(
+                                R.string.detail_indices_item_title,
+                                index.name.ifBlank {
+                                    localizedStringResource(R.string.detail_fallback_dash)
+                                },
+                                index.category.ifBlank {
+                                    localizedStringResource(R.string.detail_fallback_dash)
+                                },
+                                index.level.ifBlank {
+                                    localizedStringResource(R.string.detail_fallback_dash)
+                                },
+                            ),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            text = index.text.ifBlank {
+                                localizedStringResource(R.string.detail_fallback_dash)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

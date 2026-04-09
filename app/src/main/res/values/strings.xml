@@ -109,6 +109,11 @@
     <string name="detail_astronomy_update_time">Updated at %1$s</string>
     <string name="detail_astronomy_sunrise">Sunrise: %1$s</string>
     <string name="detail_astronomy_sunset">Sunset: %1$s</string>
+    <string name="detail_indices_title">Weather indices</string>
+    <string name="detail_indices_empty">Weather indices are currently empty.</string>
+    <string name="detail_indices_unavailable">Weather indices data is temporarily unavailable.</string>
+    <string name="detail_indices_update_time">Updated at %1$s</string>
+    <string name="detail_indices_item_title">%1$s  •  %2$s  •  Level %3$s</string>
     <string name="detail_alert_section_title">Weather alerts</string>
     <string name="detail_alert_count">%1$d active alert(s)</string>
     <string name="detail_alert_empty">No active weather alerts.</string>

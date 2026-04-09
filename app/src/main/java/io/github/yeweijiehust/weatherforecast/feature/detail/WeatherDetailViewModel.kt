@@ -16,10 +16,13 @@ import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunset
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndices
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndicesFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetAirQualityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetMinutePrecipitationUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetSunriseSunsetUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherAlertsUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherIndicesUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDailyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveHourlyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveSavedCitiesUseCase
@@ -48,6 +51,7 @@ class WeatherDetailViewModel @Inject constructor(
     private val getAirQualityUseCase: GetAirQualityUseCase,
     private val getMinutePrecipitationUseCase: GetMinutePrecipitationUseCase,
     private val getSunriseSunsetUseCase: GetSunriseSunsetUseCase,
+    private val getWeatherIndicesUseCase: GetWeatherIndicesUseCase,
 ) : ViewModel() {
     private val cityId = savedStateHandle.get<String>(WeatherForecastDestination.CITY_ID_ARG).orEmpty()
 
@@ -63,6 +67,7 @@ class WeatherDetailViewModel @Inject constructor(
     private var minutePrecipitation: MinutePrecipitationTimeline? = null
     private var isMinutePrecipitationUnsupported = false
     private var sunriseSunset: SunriseSunset? = null
+    private var weatherIndices: WeatherIndices? = null
     private var alerts: List<WeatherAlert> = emptyList()
     private var airQuality: AirQuality? = null
     private var isAirQualityUnsupported = false
@@ -122,6 +127,13 @@ class WeatherDetailViewModel @Inject constructor(
         }
     }
 
+    fun retryIndicesSection() {
+        val city = activeCity ?: return
+        viewModelScope.launch {
+            refreshIndicesSection(city)
+        }
+    }
+
     fun retryAirQualitySection() {
         val city = activeCity ?: return
         viewModelScope.launch {
@@ -136,6 +148,7 @@ class WeatherDetailViewModel @Inject constructor(
         minutePrecipitation = null
         isMinutePrecipitationUnsupported = false
         sunriseSunset = null
+        weatherIndices = null
         alerts = emptyList()
         airQuality = null
         isAirQualityUnsupported = false
@@ -146,6 +159,7 @@ class WeatherDetailViewModel @Inject constructor(
         viewModelScope.launch { refreshDailySection(city.id) }
         viewModelScope.launch { refreshMinutePrecipitationSection(city) }
         viewModelScope.launch { refreshAstronomySection(city) }
+        viewModelScope.launch { refreshIndicesSection(city) }
         viewModelScope.launch { refreshAlertsSection(city) }
         viewModelScope.launch { refreshAirQualitySection(city) }
     }
@@ -285,6 +299,35 @@ class WeatherDetailViewModel @Inject constructor(
         emitStateIfReady()
     }
 
+    private suspend fun refreshIndicesSection(city: City) {
+        val result = runCatching {
+            getWeatherIndicesUseCase(locationId = city.id)
+        }
+        result.onFailure {
+            weatherIndices = null
+            unavailableSections.add(WeatherDetailSection.Indices)
+            emitStateIfReady()
+            return
+        }
+        when (val state = result.getOrThrow()) {
+            is WeatherIndicesFetchResult.Available -> {
+                weatherIndices = state.weatherIndices
+                unavailableSections.remove(WeatherDetailSection.Indices)
+            }
+
+            WeatherIndicesFetchResult.Empty -> {
+                weatherIndices = null
+                unavailableSections.remove(WeatherDetailSection.Indices)
+            }
+
+            is WeatherIndicesFetchResult.Failure -> {
+                weatherIndices = null
+                unavailableSections.add(WeatherDetailSection.Indices)
+            }
+        }
+        emitStateIfReady()
+    }
+
     private suspend fun refreshAirQualitySection(city: City) {
         val result = runCatching {
             getAirQualityUseCase(
@@ -338,6 +381,7 @@ class WeatherDetailViewModel @Inject constructor(
                     minutePrecipitation = minutePrecipitation,
                     isMinutePrecipitationUnsupported = isMinutePrecipitationUnsupported,
                     sunriseSunset = sunriseSunset,
+                    weatherIndices = weatherIndices,
                     alerts = alerts,
                     airQuality = airQuality,
                     isAirQualityUnsupported = isAirQualityUnsupported,
@@ -352,6 +396,7 @@ class WeatherDetailViewModel @Inject constructor(
                     minutePrecipitation = minutePrecipitation,
                     isMinutePrecipitationUnsupported = isMinutePrecipitationUnsupported,
                     sunriseSunset = sunriseSunset,
+                    weatherIndices = weatherIndices,
                     alerts = alerts,
                     airQuality = airQuality,
                     isAirQualityUnsupported = isAirQualityUnsupported,

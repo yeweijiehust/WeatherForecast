@@ -18,10 +18,15 @@ import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFailureR
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunsetFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlertFetchResult
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndex
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndices
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndicesFailureReason
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndicesFetchResult
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetAirQualityUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetMinutePrecipitationUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetSunriseSunsetUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherAlertsUseCase
+import io.github.yeweijiehust.weatherforecast.domain.usecase.GetWeatherIndicesUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveDailyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveHourlyForecastUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveSavedCitiesUseCase
@@ -72,6 +77,9 @@ class WeatherDetailViewModelTest {
             sunriseSunsetResult = SunriseSunsetFetchResult.Available(
                 sunriseSunset = sampleSunriseSunset(),
             ),
+            weatherIndicesResult = WeatherIndicesFetchResult.Available(
+                weatherIndices = sampleWeatherIndices(),
+            ),
             alertResult = WeatherAlertFetchResult.Available(alerts = listOf(sampleAlert())),
             airQualityResult = AirQualityFetchResult.Available(airQuality = sampleAirQuality()),
         )
@@ -86,6 +94,7 @@ class WeatherDetailViewModelTest {
         assertThat(content.minutePrecipitation?.points).hasSize(2)
         assertThat(content.isMinutePrecipitationUnsupported).isFalse()
         assertThat(content.sunriseSunset?.sunrise).isEqualTo("2026-04-09T05:34+08:00")
+        assertThat(content.weatherIndices?.items).hasSize(2)
         assertThat(content.alerts).hasSize(1)
         assertThat(content.airQuality?.aqi).isEqualTo("86")
     }
@@ -113,6 +122,7 @@ class WeatherDetailViewModelTest {
             dailyFlow = MutableStateFlow(listOf(sampleDailyForecast())),
             minutePrecipitationResult = MinutePrecipitationFetchResult.UnsupportedRegion,
             sunriseSunsetResult = SunriseSunsetFetchResult.Available(sampleSunriseSunset()),
+            weatherIndicesResult = WeatherIndicesFetchResult.Empty,
             alertResult = WeatherAlertFetchResult.Empty,
             airQualityResult = AirQualityFetchResult.UnsupportedRegion,
         )
@@ -124,6 +134,7 @@ class WeatherDetailViewModelTest {
         assertThat(content.minutePrecipitation).isNull()
         assertThat(content.isMinutePrecipitationUnsupported).isTrue()
         assertThat(content.sunriseSunset?.sunset).isEqualTo("2026-04-09T18:18+08:00")
+        assertThat(content.weatherIndices).isNull()
         assertThat(content.airQuality).isNull()
         assertThat(content.isAirQualityUnsupported).isTrue()
     }
@@ -138,6 +149,7 @@ class WeatherDetailViewModelTest {
                 reason = MinutePrecipitationFailureReason.Timeout,
             ),
             sunriseSunsetResult = SunriseSunsetFetchResult.Available(sampleSunriseSunset()),
+            weatherIndicesResult = WeatherIndicesFetchResult.Empty,
             alertResult = WeatherAlertFetchResult.Empty,
             airQualityResult = AirQualityFetchResult.UnsupportedRegion,
         )
@@ -160,6 +172,7 @@ class WeatherDetailViewModelTest {
             sunriseSunsetResult = SunriseSunsetFetchResult.Failure(
                 reason = SunriseSunsetFailureReason.Timeout,
             ),
+            weatherIndicesResult = WeatherIndicesFetchResult.Empty,
             alertResult = WeatherAlertFetchResult.Empty,
             airQualityResult = AirQualityFetchResult.UnsupportedRegion,
         )
@@ -170,6 +183,29 @@ class WeatherDetailViewModelTest {
             .isInstanceOf(WeatherDetailState.PartialContent::class.java)
         val partial = viewModel.uiState.value.state as WeatherDetailState.PartialContent
         assertThat(partial.unavailableSections).contains(WeatherDetailSection.Astronomy)
+    }
+
+    @Test
+    fun init_whenIndicesRequestFails_emitsPartialContentWithIndicesUnavailable() = runTest {
+        val viewModel = createViewModel(
+            citiesFlow = MutableStateFlow(listOf(sampleCity())),
+            hourlyFlow = MutableStateFlow(listOf(sampleHourlyForecast())),
+            dailyFlow = MutableStateFlow(listOf(sampleDailyForecast())),
+            minutePrecipitationResult = MinutePrecipitationFetchResult.UnsupportedRegion,
+            sunriseSunsetResult = SunriseSunsetFetchResult.Available(sampleSunriseSunset()),
+            weatherIndicesResult = WeatherIndicesFetchResult.Failure(
+                reason = WeatherIndicesFailureReason.Timeout,
+            ),
+            alertResult = WeatherAlertFetchResult.Empty,
+            airQualityResult = AirQualityFetchResult.UnsupportedRegion,
+        )
+
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.state)
+            .isInstanceOf(WeatherDetailState.PartialContent::class.java)
+        val partial = viewModel.uiState.value.state as WeatherDetailState.PartialContent
+        assertThat(partial.unavailableSections).contains(WeatherDetailSection.Indices)
     }
 
     @Test
@@ -218,6 +254,7 @@ class WeatherDetailViewModelTest {
             citiesFlow = MutableStateFlow(listOf(sampleCity())),
             hourlyFlow = MutableStateFlow(listOf(sampleHourlyForecast())),
             dailyFlow = MutableStateFlow(listOf(sampleDailyForecast())),
+            weatherIndicesResult = WeatherIndicesFetchResult.Empty,
             refreshHourlyForecastUseCase = refreshHourly,
         )
 
@@ -234,6 +271,7 @@ class WeatherDetailViewModelTest {
         dailyFlow: MutableStateFlow<List<DailyForecast>>,
         minutePrecipitationResult: MinutePrecipitationFetchResult = MinutePrecipitationFetchResult.UnsupportedRegion,
         sunriseSunsetResult: SunriseSunsetFetchResult = SunriseSunsetFetchResult.Available(sampleSunriseSunset()),
+        weatherIndicesResult: WeatherIndicesFetchResult = WeatherIndicesFetchResult.Empty,
         alertResult: WeatherAlertFetchResult = WeatherAlertFetchResult.Empty,
         airQualityResult: AirQualityFetchResult = AirQualityFetchResult.UnsupportedRegion,
         alertFailure: Throwable? = null,
@@ -273,6 +311,11 @@ class WeatherDetailViewModelTest {
                 useCase.invoke(locationId = "101020100", date = astronomyDate)
             } returns sunriseSunsetResult
         }
+        val getWeatherIndicesUseCase = mockk<GetWeatherIndicesUseCase>().also { useCase ->
+            coEvery {
+                useCase.invoke(locationId = "101020100")
+            } returns weatherIndicesResult
+        }
         val getAirQualityUseCase = mockk<GetAirQualityUseCase>().also { useCase ->
             coEvery {
                 useCase.invoke(latitude = "31.23", longitude = "121.47")
@@ -291,6 +334,7 @@ class WeatherDetailViewModelTest {
             getAirQualityUseCase = getAirQualityUseCase,
             getMinutePrecipitationUseCase = getMinutePrecipitationUseCase,
             getSunriseSunsetUseCase = getSunriseSunsetUseCase,
+            getWeatherIndicesUseCase = getWeatherIndicesUseCase,
         )
     }
 
@@ -382,6 +426,30 @@ class WeatherDetailViewModelTest {
             updateTime = "2026-04-09T11:00+08:00",
             sunrise = "2026-04-09T05:34+08:00",
             sunset = "2026-04-09T18:18+08:00",
+        )
+    }
+
+    private fun sampleWeatherIndices(): WeatherIndices {
+        return WeatherIndices(
+            updateTime = "2026-04-09T13:57+08:00",
+            items = listOf(
+                WeatherIndex(
+                    date = "2026-04-09",
+                    type = "5",
+                    name = "UV Index",
+                    level = "2",
+                    category = "Low",
+                    text = "Use basic sunscreen.",
+                ),
+                WeatherIndex(
+                    date = "2026-04-09",
+                    type = "8",
+                    name = "Comfort",
+                    level = "2",
+                    category = "Good",
+                    text = "Feels comfortable.",
+                ),
+            ),
         )
     }
 
