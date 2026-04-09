@@ -13,37 +13,51 @@ import kotlinx.coroutines.flow.Flow
 interface WeatherRepository {
     fun observeCurrentWeather(cityId: String): Flow<CurrentWeather?>
 
-    suspend fun refreshCurrentWeather(cityId: String)
+    suspend fun refreshCurrentWeather(
+        cityId: String,
+        forceRefresh: Boolean = false,
+    )
 
     fun observeHourlyForecast(cityId: String): Flow<List<HourlyForecast>>
 
-    suspend fun refreshHourlyForecast(cityId: String)
+    suspend fun refreshHourlyForecast(
+        cityId: String,
+        forceRefresh: Boolean = false,
+    )
 
     fun observeDailyForecast(cityId: String): Flow<List<DailyForecast>>
 
-    suspend fun refreshDailyForecast(cityId: String)
+    suspend fun refreshDailyForecast(
+        cityId: String,
+        forceRefresh: Boolean = false,
+    )
 
     suspend fun fetchWeatherAlerts(
         latitude: String,
         longitude: String,
+        forceRefresh: Boolean = false,
     ): WeatherAlertFetchResult
 
     suspend fun fetchAirQuality(
         latitude: String,
         longitude: String,
+        forceRefresh: Boolean = false,
     ): AirQualityFetchResult
 
     suspend fun fetchMinutePrecipitation(
         latitude: String,
         longitude: String,
+        forceRefresh: Boolean = false,
     ): MinutePrecipitationFetchResult
 
     suspend fun fetchSunriseSunset(
         locationId: String,
         date: String,
+        forceRefresh: Boolean = false,
     ): SunriseSunsetFetchResult
 
     suspend fun fetchWeatherIndices(
         locationId: String,
+        forceRefresh: Boolean = false,
     ): WeatherIndicesFetchResult
 }

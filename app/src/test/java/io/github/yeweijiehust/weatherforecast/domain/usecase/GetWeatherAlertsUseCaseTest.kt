@@ -14,7 +14,11 @@ class GetWeatherAlertsUseCaseTest {
     fun invoke_delegatesToRepository() = runTest {
         val repository = mockk<WeatherRepository>()
         coEvery {
-            repository.fetchWeatherAlerts(latitude = "31.23", longitude = "121.47")
+            repository.fetchWeatherAlerts(
+                latitude = "31.23",
+                longitude = "121.47",
+                forceRefresh = false,
+            )
         } returns WeatherAlertFetchResult.Empty
         val useCase = GetWeatherAlertsUseCase(repository)
 
@@ -22,7 +26,11 @@ class GetWeatherAlertsUseCaseTest {
 
         assertThat(result).isEqualTo(WeatherAlertFetchResult.Empty)
         coVerify(exactly = 1) {
-            repository.fetchWeatherAlerts(latitude = "31.23", longitude = "121.47")
+            repository.fetchWeatherAlerts(
+                latitude = "31.23",
+                longitude = "121.47",
+                forceRefresh = false,
+            )
         }
     }
 }

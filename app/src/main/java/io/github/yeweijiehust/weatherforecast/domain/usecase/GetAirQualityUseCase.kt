@@ -10,10 +10,12 @@ class GetAirQualityUseCase @Inject constructor(
     suspend operator fun invoke(
         latitude: String,
         longitude: String,
+        forceRefresh: Boolean = false,
     ): AirQualityFetchResult {
         return weatherRepository.fetchAirQuality(
             latitude = latitude,
             longitude = longitude,
+            forceRefresh = forceRefresh,
         )
     }
 }

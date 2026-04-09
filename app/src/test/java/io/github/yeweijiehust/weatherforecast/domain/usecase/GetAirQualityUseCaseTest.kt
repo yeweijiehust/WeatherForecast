@@ -14,7 +14,11 @@ class GetAirQualityUseCaseTest {
     fun invoke_delegatesToRepository() = runTest {
         val weatherRepository = mockk<WeatherRepository>()
         coEvery {
-            weatherRepository.fetchAirQuality(latitude = "31.23", longitude = "121.47")
+            weatherRepository.fetchAirQuality(
+                latitude = "31.23",
+                longitude = "121.47",
+                forceRefresh = false,
+            )
         } returns AirQualityFetchResult.UnsupportedRegion
         val useCase = GetAirQualityUseCase(weatherRepository)
 
@@ -22,7 +26,11 @@ class GetAirQualityUseCaseTest {
 
         assertThat(result).isEqualTo(AirQualityFetchResult.UnsupportedRegion)
         coVerify(exactly = 1) {
-            weatherRepository.fetchAirQuality(latitude = "31.23", longitude = "121.47")
+            weatherRepository.fetchAirQuality(
+                latitude = "31.23",
+                longitude = "121.47",
+                forceRefresh = false,
+            )
         }
     }
 }

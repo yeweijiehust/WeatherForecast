@@ -10,10 +10,12 @@ class GetSunriseSunsetUseCase @Inject constructor(
     suspend operator fun invoke(
         locationId: String,
         date: String,
+        forceRefresh: Boolean = false,
     ): SunriseSunsetFetchResult {
         return weatherRepository.fetchSunriseSunset(
             locationId = locationId,
             date = date,
+            forceRefresh = forceRefresh,
         )
     }
 }

@@ -18,6 +18,7 @@ class GetSunriseSunsetUseCaseTest {
             weatherRepository.fetchSunriseSunset(
                 locationId = "101020100",
                 date = "20260409",
+                forceRefresh = false,
             )
         } returns SunriseSunsetFetchResult.Failure(reason = SunriseSunsetFailureReason.Unknown)
         val useCase = GetSunriseSunsetUseCase(weatherRepository)
@@ -33,6 +34,7 @@ class GetSunriseSunsetUseCaseTest {
             weatherRepository.fetchSunriseSunset(
                 locationId = "101020100",
                 date = "20260409",
+                forceRefresh = false,
             )
         }
     }

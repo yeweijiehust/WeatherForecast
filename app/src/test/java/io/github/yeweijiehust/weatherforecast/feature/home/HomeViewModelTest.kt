@@ -345,6 +345,28 @@ class HomeViewModelTest {
         assertThat(snapshot.secondarySummary.airQuality.isUnsupportedRegion).isFalse()
     }
 
+    @Test
+    fun refreshPolicy_usesAutoRefreshAtStartupAndForceOnManualPull() = runTest {
+        val defaultCity = sampleCity()
+        val repository = FakeWeatherRepository(
+            currentWeather = sampleCurrentWeather(defaultCity.id),
+            hourlyForecast = listOf(sampleHourlyForecast(defaultCity.id)),
+            dailyForecast = listOf(sampleDailyForecast(defaultCity.id)),
+        )
+        val viewModel = createViewModel(
+            defaultCity = defaultCity,
+            weatherRepository = repository,
+        )
+
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.onPullToRefresh()
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(repository.currentRefreshForceCalls).containsAtLeast(false, true)
+        assertThat(repository.hourlyRefreshForceCalls).containsAtLeast(false, true)
+        assertThat(repository.dailyRefreshForceCalls).containsAtLeast(false, true)
+    }
+
     private fun createViewModel(
         defaultCity: City?,
         weatherRepository: FakeWeatherRepository = FakeWeatherRepository(),
@@ -498,10 +520,17 @@ class HomeViewModelTest {
         private val currentWeatherFlow = MutableStateFlow(currentWeather)
         private val hourlyForecastFlow = MutableStateFlow(hourlyForecast)
         private val dailyForecastFlow = MutableStateFlow(dailyForecast)
+        val currentRefreshForceCalls = mutableListOf<Boolean>()
+        val hourlyRefreshForceCalls = mutableListOf<Boolean>()
+        val dailyRefreshForceCalls = mutableListOf<Boolean>()
 
         override fun observeCurrentWeather(cityId: String): Flow<CurrentWeather?> = currentWeatherFlow
 
-        override suspend fun refreshCurrentWeather(cityId: String) {
+        override suspend fun refreshCurrentWeather(
+            cityId: String,
+            forceRefresh: Boolean,
+        ) {
+            currentRefreshForceCalls += forceRefresh
             if (refreshDelayMillis > 0) {
                 delay(refreshDelayMillis)
             }
@@ -513,7 +542,11 @@ class HomeViewModelTest {
 
         override fun observeHourlyForecast(cityId: String): Flow<List<HourlyForecast>> = hourlyForecastFlow
 
-        override suspend fun refreshHourlyForecast(cityId: String) {
+        override suspend fun refreshHourlyForecast(
+            cityId: String,
+            forceRefresh: Boolean,
+        ) {
+            hourlyRefreshForceCalls += forceRefresh
             if (failNextHourlyRefresh) {
                 failNextHourlyRefresh = false
                 throw IllegalStateException("hourly-boom")
@@ -522,7 +555,11 @@ class HomeViewModelTest {
 
         override fun observeDailyForecast(cityId: String): Flow<List<DailyForecast>> = dailyForecastFlow
 
-        override suspend fun refreshDailyForecast(cityId: String) {
+        override suspend fun refreshDailyForecast(
+            cityId: String,
+            forceRefresh: Boolean,
+        ) {
+            dailyRefreshForceCalls += forceRefresh
             if (failNextDailyRefresh) {
                 failNextDailyRefresh = false
                 throw IllegalStateException("daily-boom")
@@ -532,6 +569,7 @@ class HomeViewModelTest {
         override suspend fun fetchWeatherAlerts(
             latitude: String,
             longitude: String,
+            forceRefresh: Boolean,
         ): WeatherAlertFetchResult {
             if (failNextAlertsFetch) {
                 failNextAlertsFetch = false
@@ -543,6 +581,7 @@ class HomeViewModelTest {
         override suspend fun fetchAirQuality(
             latitude: String,
             longitude: String,
+            forceRefresh: Boolean,
         ): AirQualityFetchResult {
             if (failNextAirQualityFetch) {
                 failNextAirQualityFetch = false
@@ -554,6 +593,7 @@ class HomeViewModelTest {
         override suspend fun fetchMinutePrecipitation(
             latitude: String,
             longitude: String,
+            forceRefresh: Boolean,
         ): MinutePrecipitationFetchResult {
             return MinutePrecipitationFetchResult.UnsupportedRegion
         }
@@ -561,12 +601,14 @@ class HomeViewModelTest {
         override suspend fun fetchSunriseSunset(
             locationId: String,
             date: String,
+            forceRefresh: Boolean,
         ): SunriseSunsetFetchResult {
             return SunriseSunsetFetchResult.Failure(SunriseSunsetFailureReason.Unknown)
         }
 
         override suspend fun fetchWeatherIndices(
             locationId: String,
+            forceRefresh: Boolean,
         ): WeatherIndicesFetchResult {
             return WeatherIndicesFetchResult.Failure(WeatherIndicesFailureReason.Unknown)
         }

@@ -554,6 +554,99 @@ class QWeatherWeatherRepositoryTest {
     }
 
     @Test
+    fun fetchWeatherIndices_usesFreshInMemoryCacheWhenNotForced() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getWeatherIndices(
+                type = "0",
+                locationId = "101020100",
+                language = "en",
+            )
+        } returns WeatherIndicesResponseDto(
+            code = "200",
+            updateTime = "2026-04-09T13:57+08:00",
+            daily = listOf(
+                WeatherIndexDto(
+                    date = "2026-04-09",
+                    type = "5",
+                    name = "UV Index",
+                    level = "2",
+                    category = "Low",
+                    text = "Use basic sunscreen.",
+                ),
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        repository.fetchWeatherIndices(locationId = "101020100")
+        repository.fetchWeatherIndices(locationId = "101020100")
+
+        coVerify(exactly = 1) {
+            weatherApiService.getWeatherIndices(
+                type = "0",
+                locationId = "101020100",
+                language = "en",
+            )
+        }
+    }
+
+    @Test
+    fun fetchWeatherIndices_forceRefreshBypassesInMemoryCache() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getWeatherIndices(
+                type = "0",
+                locationId = "101020100",
+                language = "en",
+            )
+        } returns WeatherIndicesResponseDto(
+            code = "200",
+            updateTime = "2026-04-09T13:57+08:00",
+            daily = listOf(
+                WeatherIndexDto(
+                    date = "2026-04-09",
+                    type = "5",
+                    name = "UV Index",
+                    level = "2",
+                    category = "Low",
+                    text = "Use basic sunscreen.",
+                ),
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        repository.fetchWeatherIndices(locationId = "101020100")
+        repository.fetchWeatherIndices(
+            locationId = "101020100",
+            forceRefresh = true,
+        )
+
+        coVerify(exactly = 2) {
+            weatherApiService.getWeatherIndices(
+                type = "0",
+                locationId = "101020100",
+                language = "en",
+            )
+        }
+    }
+
+    @Test
     fun fetchWeatherAlerts_requestsUsingLatLonAndLanguage() = runTest {
         val weatherApiService = mockk<WeatherApiService>()
         coEvery {
@@ -786,6 +879,95 @@ class QWeatherWeatherRepositoryTest {
 
         assertThat(cached?.temperature).isEqualTo("26")
         assertThat(refreshed?.temperature).isEqualTo("29")
+    }
+
+    @Test
+    fun refreshCurrentWeather_skipsNetworkWhenCompatibleCacheIsFreshAndNotForced() = runTest {
+        val weatherApiService = mockk<WeatherApiService>(relaxed = true)
+        val localDataSource = FakeCurrentWeatherLocalDataSource(
+            currentWeather = sampleCurrentWeatherLocal().copy(
+                fetchedAtEpochMillis = System.currentTimeMillis(),
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            currentWeatherLocalDataSource = localDataSource,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        repository.refreshCurrentWeather(
+            cityId = "101020100",
+            forceRefresh = false,
+        )
+
+        coVerify(exactly = 0) {
+            weatherApiService.getCurrentWeather(
+                locationId = "101020100",
+                language = "en",
+                unit = "m",
+            )
+        }
+    }
+
+    @Test
+    fun refreshCurrentWeather_forceRefreshBypassesFreshnessGate() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        val localDataSource = FakeCurrentWeatherLocalDataSource(
+            currentWeather = sampleCurrentWeatherLocal().copy(
+                fetchedAtEpochMillis = System.currentTimeMillis(),
+            ),
+        )
+        coEvery {
+            weatherApiService.getCurrentWeather(
+                locationId = "101020100",
+                language = "en",
+                unit = "m",
+            )
+        } returns CurrentWeatherResponseDto(
+            code = "200",
+            now = CurrentWeatherDto(
+                observationTime = "2026-04-08T14:15+08:00",
+                temperature = "29",
+                feelsLike = "31",
+                conditionText = "Sunny",
+                conditionIcon = "100",
+                humidity = "60",
+                windDirection = "East",
+                windScale = "3",
+                windSpeed = "10",
+                precipitation = "0.0",
+                pressure = "1011",
+                visibility = "16",
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            currentWeatherLocalDataSource = localDataSource,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        repository.refreshCurrentWeather(
+            cityId = "101020100",
+            forceRefresh = true,
+        )
+
+        coVerify(exactly = 1) {
+            weatherApiService.getCurrentWeather(
+                locationId = "101020100",
+                language = "en",
+                unit = "m",
+            )
+        }
     }
 
     @Test

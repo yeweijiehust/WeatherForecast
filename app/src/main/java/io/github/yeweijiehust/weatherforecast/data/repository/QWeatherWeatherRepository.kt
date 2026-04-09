@@ -29,6 +29,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlin.math.min
 import retrofit2.HttpException
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -40,6 +41,14 @@ class QWeatherWeatherRepository @Inject constructor(
     private val dailyForecastLocalDataSource: DailyForecastLocalDataSource,
     private val settingsRepository: SettingsRepository,
 ) : WeatherRepository {
+    private val policyLock = Any()
+    private val refreshFailureGates = mutableMapOf<String, RefreshFailureGate>()
+    private val weatherAlertCache = mutableMapOf<String, CachedResult<WeatherAlertFetchResult>>()
+    private val airQualityCache = mutableMapOf<String, CachedResult<AirQualityFetchResult>>()
+    private val minutePrecipitationCache = mutableMapOf<String, CachedResult<MinutePrecipitationFetchResult>>()
+    private val sunriseSunsetCache = mutableMapOf<String, CachedResult<SunriseSunsetFetchResult>>()
+    private val weatherIndicesCache = mutableMapOf<String, CachedResult<WeatherIndicesFetchResult>>()
+
     override fun observeCurrentWeather(cityId: String): Flow<CurrentWeather?> {
         return settingsRepository.observeAppSettings().flatMapLatest { settings ->
             currentWeatherLocalDataSource.observeCurrentWeather(
@@ -52,29 +61,58 @@ class QWeatherWeatherRepository @Inject constructor(
         }
     }
 
-    override suspend fun refreshCurrentWeather(cityId: String) {
+    override suspend fun refreshCurrentWeather(
+        cityId: String,
+        forceRefresh: Boolean,
+    ) {
         check(qWeatherConfig.isConfigured) {
             "Weather API is not configured. Add api_key and api_host to local.properties."
         }
 
         val settings = settingsRepository.getCurrentSettings()
-        val response = weatherApiService.getCurrentWeather(
-            locationId = cityId,
-            language = settings.language.apiCode,
-            unit = settings.unitSystem.apiCode,
+        val now = System.currentTimeMillis()
+        val localCurrentWeather = currentWeatherLocalDataSource.getCurrentWeather(
+            cityId = cityId,
+            language = settings.language.storageValue,
+            unitSystem = settings.unitSystem.storageValue,
         )
-        check(response.code == SUCCESS_CODE && response.now != null) {
-            "Current weather request failed with code ${response.code}."
+        val policyKey = buildPolicyKey(
+            dataset = "current",
+            locationKey = cityId,
+            settingsSignature = settingsSignature(settings.language.storageValue, settings.unitSystem.storageValue),
+        )
+        if (!forceRefresh) {
+            val cachedFetchedAt = localCurrentWeather?.fetchedAtEpochMillis
+            if (isFresh(cachedFetchedAt, CURRENT_WEATHER_TTL_MILLIS, now)) {
+                return
+            }
+            if (shouldSkipAutoRequest(policyKey = policyKey, hasCachedData = localCurrentWeather != null, now = now)) {
+                return
+            }
         }
+        try {
+            val response = weatherApiService.getCurrentWeather(
+                locationId = cityId,
+                language = settings.language.apiCode,
+                unit = settings.unitSystem.apiCode,
+            )
+            check(response.code == SUCCESS_CODE && response.now != null) {
+                "Current weather request failed with code ${response.code}."
+            }
 
-        currentWeatherLocalDataSource.upsertCurrentWeather(
-            response.now.toLocalModel(
-                cityId = cityId,
-                fetchedAtEpochMillis = System.currentTimeMillis(),
-                language = settings.language.storageValue,
-                unitSystem = settings.unitSystem.storageValue,
-            ),
-        )
+            currentWeatherLocalDataSource.upsertCurrentWeather(
+                response.now.toLocalModel(
+                    cityId = cityId,
+                    fetchedAtEpochMillis = System.currentTimeMillis(),
+                    language = settings.language.storageValue,
+                    unitSystem = settings.unitSystem.storageValue,
+                ),
+            )
+            clearFailureGate(policyKey)
+        } catch (error: Throwable) {
+            recordFailure(policyKey = policyKey, now = now)
+            throw error
+        }
     }
 
     override fun observeHourlyForecast(cityId: String): Flow<List<HourlyForecast>> {
@@ -89,35 +127,67 @@ class QWeatherWeatherRepository @Inject constructor(
         }
     }
 
-    override suspend fun refreshHourlyForecast(cityId: String) {
+    override suspend fun refreshHourlyForecast(
+        cityId: String,
+        forceRefresh: Boolean,
+    ) {
         check(qWeatherConfig.isConfigured) {
             "Weather API is not configured. Add api_key and api_host to local.properties."
         }
 
         val settings = settingsRepository.getCurrentSettings()
-        val response = weatherApiService.getHourlyForecast(
-            locationId = cityId,
-            language = settings.language.apiCode,
-            unit = settings.unitSystem.apiCode,
-        )
-        check(response.code == SUCCESS_CODE && response.hourly != null) {
-            "Hourly forecast request failed with code ${response.code}."
-        }
-
-        val fetchedAt = System.currentTimeMillis()
-        hourlyForecastLocalDataSource.replaceHourlyForecast(
+        val now = System.currentTimeMillis()
+        val localHourlyForecast = hourlyForecastLocalDataSource.getHourlyForecast(
             cityId = cityId,
             language = settings.language.storageValue,
             unitSystem = settings.unitSystem.storageValue,
-            hourlyForecast = response.hourly.map { hourlyDto ->
-                hourlyDto.toLocalModel(
-                    cityId = cityId,
-                    fetchedAtEpochMillis = fetchedAt,
-                    language = settings.language.storageValue,
-                    unitSystem = settings.unitSystem.storageValue,
-                )
-            },
         )
+        val policyKey = buildPolicyKey(
+            dataset = "hourly",
+            locationKey = cityId,
+            settingsSignature = settingsSignature(settings.language.storageValue, settings.unitSystem.storageValue),
+        )
+        if (!forceRefresh) {
+            val cachedFetchedAt = localHourlyForecast.maxOfOrNull { localModel ->
+                localModel.fetchedAtEpochMillis
+            }
+            if (isFresh(cachedFetchedAt, HOURLY_FORECAST_TTL_MILLIS, now)) {
+                return
+            }
+            if (shouldSkipAutoRequest(policyKey = policyKey, hasCachedData = localHourlyForecast.isNotEmpty(), now = now)) {
+                return
+            }
+        }
+
+        try {
+            val response = weatherApiService.getHourlyForecast(
+                locationId = cityId,
+                language = settings.language.apiCode,
+                unit = settings.unitSystem.apiCode,
+            )
+            check(response.code == SUCCESS_CODE && response.hourly != null) {
+                "Hourly forecast request failed with code ${response.code}."
+            }
+
+            val fetchedAt = System.currentTimeMillis()
+            hourlyForecastLocalDataSource.replaceHourlyForecast(
+                cityId = cityId,
+                language = settings.language.storageValue,
+                unitSystem = settings.unitSystem.storageValue,
+                hourlyForecast = response.hourly.map { hourlyDto ->
+                    hourlyDto.toLocalModel(
+                        cityId = cityId,
+                        fetchedAtEpochMillis = fetchedAt,
+                        language = settings.language.storageValue,
+                        unitSystem = settings.unitSystem.storageValue,
+                    )
+                },
+            )
+            clearFailureGate(policyKey)
+        } catch (error: Throwable) {
+            recordFailure(policyKey = policyKey, now = now)
+            throw error
+        }
     }
 
     override fun observeDailyForecast(cityId: String): Flow<List<DailyForecast>> {
@@ -132,72 +202,178 @@ class QWeatherWeatherRepository @Inject constructor(
         }
     }
 
-    override suspend fun refreshDailyForecast(cityId: String) {
+    override suspend fun refreshDailyForecast(
+        cityId: String,
+        forceRefresh: Boolean,
+    ) {
         check(qWeatherConfig.isConfigured) {
             "Weather API is not configured. Add api_key and api_host to local.properties."
         }
 
         val settings = settingsRepository.getCurrentSettings()
-        val response = weatherApiService.getDailyForecast(
-            locationId = cityId,
-            language = settings.language.apiCode,
-            unit = settings.unitSystem.apiCode,
-        )
-        check(response.code == SUCCESS_CODE && response.daily != null) {
-            "Daily forecast request failed with code ${response.code}."
-        }
-
-        val fetchedAt = System.currentTimeMillis()
-        dailyForecastLocalDataSource.replaceDailyForecast(
+        val now = System.currentTimeMillis()
+        val localDailyForecast = dailyForecastLocalDataSource.getDailyForecast(
             cityId = cityId,
             language = settings.language.storageValue,
             unitSystem = settings.unitSystem.storageValue,
-            dailyForecast = response.daily.map { dailyDto ->
-                dailyDto.toLocalModel(
-                    cityId = cityId,
-                    fetchedAtEpochMillis = fetchedAt,
-                    language = settings.language.storageValue,
-                    unitSystem = settings.unitSystem.storageValue,
-                )
-            },
         )
+        val policyKey = buildPolicyKey(
+            dataset = "daily",
+            locationKey = cityId,
+            settingsSignature = settingsSignature(settings.language.storageValue, settings.unitSystem.storageValue),
+        )
+        if (!forceRefresh) {
+            val cachedFetchedAt = localDailyForecast.maxOfOrNull { localModel ->
+                localModel.fetchedAtEpochMillis
+            }
+            if (isFresh(cachedFetchedAt, DAILY_FORECAST_TTL_MILLIS, now)) {
+                return
+            }
+            if (shouldSkipAutoRequest(policyKey = policyKey, hasCachedData = localDailyForecast.isNotEmpty(), now = now)) {
+                return
+            }
+        }
+
+        try {
+            val response = weatherApiService.getDailyForecast(
+                locationId = cityId,
+                language = settings.language.apiCode,
+                unit = settings.unitSystem.apiCode,
+            )
+            check(response.code == SUCCESS_CODE && response.daily != null) {
+                "Daily forecast request failed with code ${response.code}."
+            }
+
+            val fetchedAt = System.currentTimeMillis()
+            dailyForecastLocalDataSource.replaceDailyForecast(
+                cityId = cityId,
+                language = settings.language.storageValue,
+                unitSystem = settings.unitSystem.storageValue,
+                dailyForecast = response.daily.map { dailyDto ->
+                    dailyDto.toLocalModel(
+                        cityId = cityId,
+                        fetchedAtEpochMillis = fetchedAt,
+                        language = settings.language.storageValue,
+                        unitSystem = settings.unitSystem.storageValue,
+                    )
+                },
+            )
+            clearFailureGate(policyKey)
+        } catch (error: Throwable) {
+            recordFailure(policyKey = policyKey, now = now)
+            throw error
+        }
     }
 
     override suspend fun fetchWeatherAlerts(
         latitude: String,
         longitude: String,
+        forceRefresh: Boolean,
     ): WeatherAlertFetchResult {
         check(qWeatherConfig.isConfigured) {
             "Weather API is not configured. Add api_key and api_host to local.properties."
         }
 
         val settings = settingsRepository.getCurrentSettings()
-        val response = weatherApiService.getWeatherAlerts(
-            latitude = latitude,
-            longitude = longitude,
-            language = settings.language.apiCode,
+        val settingsSignature = settingsSignature(
+            language = settings.language.storageValue,
+            unitSystem = settings.unitSystem.storageValue,
         )
-        val alerts = response.alerts
+        val cacheKey = buildPolicyKey(
+            dataset = "alerts-cache",
+            locationKey = "$latitude,$longitude",
+            settingsSignature = settingsSignature,
+        )
+        val policyKey = buildPolicyKey(
+            dataset = "alerts",
+            locationKey = "$latitude,$longitude",
+            settingsSignature = settingsSignature,
+        )
+        val now = System.currentTimeMillis()
+        val cachedResult = getCachedSecondaryResult(
+            cache = weatherAlertCache,
+            cacheKey = cacheKey,
+            ttlMillis = ALERTS_TTL_MILLIS,
+            forceRefresh = forceRefresh,
+            policyKey = policyKey,
+            now = now,
+        )
+        if (cachedResult != null) {
+            return cachedResult
+        }
 
-        return if (alerts.isNotEmpty()) {
-            WeatherAlertFetchResult.Available(
-                alerts = alerts.map { alertDto -> alertDto.toDomain() },
+        return try {
+            val response = weatherApiService.getWeatherAlerts(
+                latitude = latitude,
+                longitude = longitude,
+                language = settings.language.apiCode,
             )
-        } else {
-            WeatherAlertFetchResult.Empty
+            val alerts = response.alerts
+            val result = if (alerts.isNotEmpty()) {
+                WeatherAlertFetchResult.Available(
+                    alerts = alerts.map { alertDto -> alertDto.toDomain() },
+                )
+            } else {
+                WeatherAlertFetchResult.Empty
+            }
+            saveSecondaryResult(
+                cache = weatherAlertCache,
+                cacheKey = cacheKey,
+                value = result,
+                now = now,
+            )
+            clearFailureGate(policyKey)
+            result
+        } catch (error: Throwable) {
+            recordFailure(policyKey = policyKey, now = now)
+            getCachedSecondaryResult(
+                cache = weatherAlertCache,
+                cacheKey = cacheKey,
+                ttlMillis = Long.MAX_VALUE,
+                forceRefresh = false,
+                policyKey = policyKey,
+                now = now,
+            ) ?: throw error
         }
     }
 
     override suspend fun fetchAirQuality(
         latitude: String,
         longitude: String,
+        forceRefresh: Boolean,
     ): AirQualityFetchResult {
         check(qWeatherConfig.isConfigured) {
             "Weather API is not configured. Add api_key and api_host to local.properties."
         }
 
         val settings = settingsRepository.getCurrentSettings()
-        return try {
+        val settingsSignature = settingsSignature(
+            language = settings.language.storageValue,
+            unitSystem = settings.unitSystem.storageValue,
+        )
+        val cacheKey = buildPolicyKey(
+            dataset = "air-quality-cache",
+            locationKey = "$latitude,$longitude",
+            settingsSignature = settingsSignature,
+        )
+        val policyKey = buildPolicyKey(
+            dataset = "air-quality",
+            locationKey = "$latitude,$longitude",
+            settingsSignature = settingsSignature,
+        )
+        val now = System.currentTimeMillis()
+        getCachedSecondaryResult(
+            cache = airQualityCache,
+            cacheKey = cacheKey,
+            ttlMillis = AIR_QUALITY_TTL_MILLIS,
+            forceRefresh = forceRefresh,
+            policyKey = policyKey,
+            now = now,
+        )?.let { cached ->
+            return cached
+        }
+
+        val result = try {
             val response = weatherApiService.getAirQuality(
                 latitude = latitude,
                 longitude = longitude,
@@ -230,18 +406,69 @@ class QWeatherWeatherRepository @Inject constructor(
                 }
             }
         }
+        return when (result) {
+            is AirQualityFetchResult.Failure -> {
+                recordFailure(policyKey = policyKey, now = now)
+                getCachedSecondaryResult(
+                    cache = airQualityCache,
+                    cacheKey = cacheKey,
+                    ttlMillis = Long.MAX_VALUE,
+                    forceRefresh = false,
+                    policyKey = policyKey,
+                    now = now,
+                ) ?: result
+            }
+
+            else -> {
+                saveSecondaryResult(
+                    cache = airQualityCache,
+                    cacheKey = cacheKey,
+                    value = result,
+                    now = now,
+                )
+                clearFailureGate(policyKey)
+                result
+            }
+        }
     }
 
     override suspend fun fetchMinutePrecipitation(
         latitude: String,
         longitude: String,
+        forceRefresh: Boolean,
     ): MinutePrecipitationFetchResult {
         check(qWeatherConfig.isConfigured) {
             "Weather API is not configured. Add api_key and api_host to local.properties."
         }
 
         val settings = settingsRepository.getCurrentSettings()
-        return try {
+        val settingsSignature = settingsSignature(
+            language = settings.language.storageValue,
+            unitSystem = settings.unitSystem.storageValue,
+        )
+        val cacheKey = buildPolicyKey(
+            dataset = "minute-precipitation-cache",
+            locationKey = "$latitude,$longitude",
+            settingsSignature = settingsSignature,
+        )
+        val policyKey = buildPolicyKey(
+            dataset = "minute-precipitation",
+            locationKey = "$latitude,$longitude",
+            settingsSignature = settingsSignature,
+        )
+        val now = System.currentTimeMillis()
+        getCachedSecondaryResult(
+            cache = minutePrecipitationCache,
+            cacheKey = cacheKey,
+            ttlMillis = MINUTE_PRECIPITATION_TTL_MILLIS,
+            forceRefresh = forceRefresh,
+            policyKey = policyKey,
+            now = now,
+        )?.let { cached ->
+            return cached
+        }
+
+        val result = try {
             val response = weatherApiService.getMinutePrecipitation(
                 location = "$longitude,$latitude",
                 language = settings.language.apiCode,
@@ -282,18 +509,69 @@ class QWeatherWeatherRepository @Inject constructor(
                 }
             }
         }
+        return when (result) {
+            is MinutePrecipitationFetchResult.Failure -> {
+                recordFailure(policyKey = policyKey, now = now)
+                getCachedSecondaryResult(
+                    cache = minutePrecipitationCache,
+                    cacheKey = cacheKey,
+                    ttlMillis = Long.MAX_VALUE,
+                    forceRefresh = false,
+                    policyKey = policyKey,
+                    now = now,
+                ) ?: result
+            }
+
+            else -> {
+                saveSecondaryResult(
+                    cache = minutePrecipitationCache,
+                    cacheKey = cacheKey,
+                    value = result,
+                    now = now,
+                )
+                clearFailureGate(policyKey)
+                result
+            }
+        }
     }
 
     override suspend fun fetchSunriseSunset(
         locationId: String,
         date: String,
+        forceRefresh: Boolean,
     ): SunriseSunsetFetchResult {
         check(qWeatherConfig.isConfigured) {
             "Weather API is not configured. Add api_key and api_host to local.properties."
         }
 
         val settings = settingsRepository.getCurrentSettings()
-        return try {
+        val settingsSignature = settingsSignature(
+            language = settings.language.storageValue,
+            unitSystem = settings.unitSystem.storageValue,
+        )
+        val cacheKey = buildPolicyKey(
+            dataset = "sunrise-sunset-cache",
+            locationKey = "$locationId|$date",
+            settingsSignature = settingsSignature,
+        )
+        val policyKey = buildPolicyKey(
+            dataset = "sunrise-sunset",
+            locationKey = "$locationId|$date",
+            settingsSignature = settingsSignature,
+        )
+        val now = System.currentTimeMillis()
+        getCachedSecondaryResult(
+            cache = sunriseSunsetCache,
+            cacheKey = cacheKey,
+            ttlMillis = SUNRISE_SUNSET_TTL_MILLIS,
+            forceRefresh = forceRefresh,
+            policyKey = policyKey,
+            now = now,
+        )?.let { cached ->
+            return cached
+        }
+
+        val result = try {
             val response = weatherApiService.getSunriseSunset(
                 locationId = locationId,
                 date = date,
@@ -321,17 +599,68 @@ class QWeatherWeatherRepository @Inject constructor(
                 }
             }
         }
+        return when (result) {
+            is SunriseSunsetFetchResult.Failure -> {
+                recordFailure(policyKey = policyKey, now = now)
+                getCachedSecondaryResult(
+                    cache = sunriseSunsetCache,
+                    cacheKey = cacheKey,
+                    ttlMillis = Long.MAX_VALUE,
+                    forceRefresh = false,
+                    policyKey = policyKey,
+                    now = now,
+                ) ?: result
+            }
+
+            else -> {
+                saveSecondaryResult(
+                    cache = sunriseSunsetCache,
+                    cacheKey = cacheKey,
+                    value = result,
+                    now = now,
+                )
+                clearFailureGate(policyKey)
+                result
+            }
+        }
     }
 
     override suspend fun fetchWeatherIndices(
         locationId: String,
+        forceRefresh: Boolean,
     ): WeatherIndicesFetchResult {
         check(qWeatherConfig.isConfigured) {
             "Weather API is not configured. Add api_key and api_host to local.properties."
         }
 
         val settings = settingsRepository.getCurrentSettings()
-        return try {
+        val settingsSignature = settingsSignature(
+            language = settings.language.storageValue,
+            unitSystem = settings.unitSystem.storageValue,
+        )
+        val cacheKey = buildPolicyKey(
+            dataset = "indices-cache",
+            locationKey = locationId,
+            settingsSignature = settingsSignature,
+        )
+        val policyKey = buildPolicyKey(
+            dataset = "indices",
+            locationKey = locationId,
+            settingsSignature = settingsSignature,
+        )
+        val now = System.currentTimeMillis()
+        getCachedSecondaryResult(
+            cache = weatherIndicesCache,
+            cacheKey = cacheKey,
+            ttlMillis = WEATHER_INDICES_TTL_MILLIS,
+            forceRefresh = forceRefresh,
+            policyKey = policyKey,
+            now = now,
+        )?.let { cached ->
+            return cached
+        }
+
+        val result = try {
             val response = weatherApiService.getWeatherIndices(
                 type = INDEX_TYPE_ALL,
                 locationId = locationId,
@@ -372,7 +701,130 @@ class QWeatherWeatherRepository @Inject constructor(
                 }
             }
         }
+        return when (result) {
+            is WeatherIndicesFetchResult.Failure -> {
+                recordFailure(policyKey = policyKey, now = now)
+                getCachedSecondaryResult(
+                    cache = weatherIndicesCache,
+                    cacheKey = cacheKey,
+                    ttlMillis = Long.MAX_VALUE,
+                    forceRefresh = false,
+                    policyKey = policyKey,
+                    now = now,
+                ) ?: result
+            }
+
+            else -> {
+                saveSecondaryResult(
+                    cache = weatherIndicesCache,
+                    cacheKey = cacheKey,
+                    value = result,
+                    now = now,
+                )
+                clearFailureGate(policyKey)
+                result
+            }
+        }
     }
+
+    private fun settingsSignature(
+        language: String,
+        unitSystem: String,
+    ): String = "$language|$unitSystem"
+
+    private fun buildPolicyKey(
+        dataset: String,
+        locationKey: String,
+        settingsSignature: String,
+    ): String = "$dataset::$locationKey::$settingsSignature"
+
+    private fun isFresh(
+        fetchedAtMillis: Long?,
+        ttlMillis: Long,
+        now: Long,
+    ): Boolean {
+        if (fetchedAtMillis == null) return false
+        return now - fetchedAtMillis <= ttlMillis
+    }
+
+    private fun shouldSkipAutoRequest(
+        policyKey: String,
+        hasCachedData: Boolean,
+        now: Long,
+    ): Boolean {
+        if (!hasCachedData) return false
+        return synchronized(policyLock) {
+            val gate = refreshFailureGates[policyKey] ?: return@synchronized false
+            now < gate.nextAllowedAtMillis
+        }
+    }
+
+    private fun recordFailure(
+        policyKey: String,
+        now: Long,
+    ) {
+        synchronized(policyLock) {
+            val failureCount = (refreshFailureGates[policyKey]?.failureCount ?: 0) + 1
+            val exponent = (failureCount - 1).coerceAtMost(BACKOFF_MAX_EXPONENT)
+            val backoffMultiplier = 1L shl exponent
+            val backoffDelay = min(
+                AUTO_RETRY_BASE_DELAY_MILLIS * backoffMultiplier,
+                AUTO_RETRY_MAX_DELAY_MILLIS,
+            )
+            refreshFailureGates[policyKey] = RefreshFailureGate(
+                failureCount = failureCount,
+                nextAllowedAtMillis = now + backoffDelay,
+            )
+        }
+    }
+
+    private fun clearFailureGate(policyKey: String) {
+        synchronized(policyLock) {
+            refreshFailureGates.remove(policyKey)
+        }
+    }
+
+    private fun <T> getCachedSecondaryResult(
+        cache: MutableMap<String, CachedResult<T>>,
+        cacheKey: String,
+        ttlMillis: Long,
+        forceRefresh: Boolean,
+        policyKey: String,
+        now: Long,
+    ): T? {
+        val cached = synchronized(policyLock) { cache[cacheKey] } ?: return null
+        if (!forceRefresh && now - cached.fetchedAtMillis <= ttlMillis) {
+            return cached.value
+        }
+        if (!forceRefresh && shouldSkipAutoRequest(policyKey = policyKey, hasCachedData = true, now = now)) {
+            return cached.value
+        }
+        return null
+    }
+
+    private fun <T> saveSecondaryResult(
+        cache: MutableMap<String, CachedResult<T>>,
+        cacheKey: String,
+        value: T,
+        now: Long,
+    ) {
+        synchronized(policyLock) {
+            cache[cacheKey] = CachedResult(
+                value = value,
+                fetchedAtMillis = now,
+            )
+        }
+    }
+
+    private data class RefreshFailureGate(
+        val failureCount: Int,
+        val nextAllowedAtMillis: Long,
+    )
+
+    private data class CachedResult<T>(
+        val value: T,
+        val fetchedAtMillis: Long,
+    )
 
     private companion object {
         private const val SUCCESS_CODE = "200"
@@ -380,5 +832,16 @@ class QWeatherWeatherRepository @Inject constructor(
         private const val UNAUTHORIZED_STATUS_CODE = 401
         private const val QUOTA_EXCEEDED_STATUS_CODE = 402
         private const val INDEX_TYPE_ALL = "0"
+        private const val CURRENT_WEATHER_TTL_MILLIS = 10 * 60 * 1000L
+        private const val HOURLY_FORECAST_TTL_MILLIS = 30 * 60 * 1000L
+        private const val DAILY_FORECAST_TTL_MILLIS = 3 * 60 * 60 * 1000L
+        private const val ALERTS_TTL_MILLIS = 10 * 60 * 1000L
+        private const val AIR_QUALITY_TTL_MILLIS = 15 * 60 * 1000L
+        private const val MINUTE_PRECIPITATION_TTL_MILLIS = 5 * 60 * 1000L
+        private const val SUNRISE_SUNSET_TTL_MILLIS = 12 * 60 * 60 * 1000L
+        private const val WEATHER_INDICES_TTL_MILLIS = 6 * 60 * 60 * 1000L
+        private const val AUTO_RETRY_BASE_DELAY_MILLIS = 15 * 1000L
+        private const val AUTO_RETRY_MAX_DELAY_MILLIS = 10 * 60 * 1000L
+        private const val BACKOFF_MAX_EXPONENT = 6
     }
 }

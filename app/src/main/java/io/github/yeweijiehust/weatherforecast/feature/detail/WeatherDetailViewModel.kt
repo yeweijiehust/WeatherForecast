@@ -95,49 +95,70 @@ class WeatherDetailViewModel @Inject constructor(
     fun retryHourlySection() {
         val city = activeCity ?: return
         viewModelScope.launch {
-            refreshHourlySection(city.id)
+            refreshHourlySection(
+                cityId = city.id,
+                forceRefresh = true,
+            )
         }
     }
 
     fun retryDailySection() {
         val city = activeCity ?: return
         viewModelScope.launch {
-            refreshDailySection(city.id)
+            refreshDailySection(
+                cityId = city.id,
+                forceRefresh = true,
+            )
         }
     }
 
     fun retryAlertsSection() {
         val city = activeCity ?: return
         viewModelScope.launch {
-            refreshAlertsSection(city)
+            refreshAlertsSection(
+                city = city,
+                forceRefresh = true,
+            )
         }
     }
 
     fun retryMinutePrecipitationSection() {
         val city = activeCity ?: return
         viewModelScope.launch {
-            refreshMinutePrecipitationSection(city)
+            refreshMinutePrecipitationSection(
+                city = city,
+                forceRefresh = true,
+            )
         }
     }
 
     fun retryAstronomySection() {
         val city = activeCity ?: return
         viewModelScope.launch {
-            refreshAstronomySection(city)
+            refreshAstronomySection(
+                city = city,
+                forceRefresh = true,
+            )
         }
     }
 
     fun retryIndicesSection() {
         val city = activeCity ?: return
         viewModelScope.launch {
-            refreshIndicesSection(city)
+            refreshIndicesSection(
+                city = city,
+                forceRefresh = true,
+            )
         }
     }
 
     fun retryAirQualitySection() {
         val city = activeCity ?: return
         viewModelScope.launch {
-            refreshAirQualitySection(city)
+            refreshAirQualitySection(
+                city = city,
+                forceRefresh = true,
+            )
         }
     }
 
@@ -155,13 +176,13 @@ class WeatherDetailViewModel @Inject constructor(
         unavailableSections.clear()
         _uiState.value = WeatherDetailUiState(state = WeatherDetailState.Loading)
         startForecastObservation(city.id)
-        viewModelScope.launch { refreshHourlySection(city.id) }
-        viewModelScope.launch { refreshDailySection(city.id) }
-        viewModelScope.launch { refreshMinutePrecipitationSection(city) }
-        viewModelScope.launch { refreshAstronomySection(city) }
-        viewModelScope.launch { refreshIndicesSection(city) }
-        viewModelScope.launch { refreshAlertsSection(city) }
-        viewModelScope.launch { refreshAirQualitySection(city) }
+        viewModelScope.launch { refreshHourlySection(city.id, forceRefresh = false) }
+        viewModelScope.launch { refreshDailySection(city.id, forceRefresh = false) }
+        viewModelScope.launch { refreshMinutePrecipitationSection(city, forceRefresh = false) }
+        viewModelScope.launch { refreshAstronomySection(city, forceRefresh = false) }
+        viewModelScope.launch { refreshIndicesSection(city, forceRefresh = false) }
+        viewModelScope.launch { refreshAlertsSection(city, forceRefresh = false) }
+        viewModelScope.launch { refreshAirQualitySection(city, forceRefresh = false) }
     }
 
     private fun startForecastObservation(cityId: String) {
@@ -188,8 +209,16 @@ class WeatherDetailViewModel @Inject constructor(
         }
     }
 
-    private suspend fun refreshHourlySection(cityId: String) {
-        val result = runCatching { refreshHourlyForecastUseCase(cityId) }
+    private suspend fun refreshHourlySection(
+        cityId: String,
+        forceRefresh: Boolean,
+    ) {
+        val result = runCatching {
+            refreshHourlyForecastUseCase(
+                cityId = cityId,
+                forceRefresh = forceRefresh,
+            )
+        }
         if (result.isFailure && hourlyForecast.orEmpty().isEmpty()) {
             unavailableSections.add(WeatherDetailSection.HourlyForecast)
         } else if (result.isSuccess) {
@@ -198,8 +227,16 @@ class WeatherDetailViewModel @Inject constructor(
         emitStateIfReady()
     }
 
-    private suspend fun refreshDailySection(cityId: String) {
-        val result = runCatching { refreshDailyForecastUseCase(cityId) }
+    private suspend fun refreshDailySection(
+        cityId: String,
+        forceRefresh: Boolean,
+    ) {
+        val result = runCatching {
+            refreshDailyForecastUseCase(
+                cityId = cityId,
+                forceRefresh = forceRefresh,
+            )
+        }
         if (result.isFailure && dailyForecast.orEmpty().isEmpty()) {
             unavailableSections.add(WeatherDetailSection.DailyForecast)
         } else if (result.isSuccess) {
@@ -208,11 +245,15 @@ class WeatherDetailViewModel @Inject constructor(
         emitStateIfReady()
     }
 
-    private suspend fun refreshAlertsSection(city: City) {
+    private suspend fun refreshAlertsSection(
+        city: City,
+        forceRefresh: Boolean,
+    ) {
         val result = runCatching {
             getWeatherAlertsUseCase(
                 latitude = city.lat,
                 longitude = city.lon,
+                forceRefresh = forceRefresh,
             )
         }
         result.onFailure {
@@ -235,11 +276,15 @@ class WeatherDetailViewModel @Inject constructor(
         emitStateIfReady()
     }
 
-    private suspend fun refreshMinutePrecipitationSection(city: City) {
+    private suspend fun refreshMinutePrecipitationSection(
+        city: City,
+        forceRefresh: Boolean,
+    ) {
         val result = runCatching {
             getMinutePrecipitationUseCase(
                 latitude = city.lat,
                 longitude = city.lon,
+                forceRefresh = forceRefresh,
             )
         }
         result.onFailure {
@@ -271,12 +316,16 @@ class WeatherDetailViewModel @Inject constructor(
         emitStateIfReady()
     }
 
-    private suspend fun refreshAstronomySection(city: City) {
+    private suspend fun refreshAstronomySection(
+        city: City,
+        forceRefresh: Boolean,
+    ) {
         val date = currentDateInCity(city.timeZone)
         val result = runCatching {
             getSunriseSunsetUseCase(
                 locationId = city.id,
                 date = date,
+                forceRefresh = forceRefresh,
             )
         }
         result.onFailure {
@@ -299,9 +348,15 @@ class WeatherDetailViewModel @Inject constructor(
         emitStateIfReady()
     }
 
-    private suspend fun refreshIndicesSection(city: City) {
+    private suspend fun refreshIndicesSection(
+        city: City,
+        forceRefresh: Boolean,
+    ) {
         val result = runCatching {
-            getWeatherIndicesUseCase(locationId = city.id)
+            getWeatherIndicesUseCase(
+                locationId = city.id,
+                forceRefresh = forceRefresh,
+            )
         }
         result.onFailure {
             weatherIndices = null
@@ -328,11 +383,15 @@ class WeatherDetailViewModel @Inject constructor(
         emitStateIfReady()
     }
 
-    private suspend fun refreshAirQualitySection(city: City) {
+    private suspend fun refreshAirQualitySection(
+        city: City,
+        forceRefresh: Boolean,
+    ) {
         val result = runCatching {
             getAirQualityUseCase(
                 latitude = city.lat,
                 longitude = city.lon,
+                forceRefresh = forceRefresh,
             )
         }
         result.onFailure {

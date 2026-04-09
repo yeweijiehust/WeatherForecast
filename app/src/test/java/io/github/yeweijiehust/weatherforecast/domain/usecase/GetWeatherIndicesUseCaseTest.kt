@@ -14,7 +14,10 @@ class GetWeatherIndicesUseCaseTest {
     fun invoke_delegatesToRepository() = runTest {
         val weatherRepository = mockk<WeatherRepository>()
         coEvery {
-            weatherRepository.fetchWeatherIndices(locationId = "101020100")
+            weatherRepository.fetchWeatherIndices(
+                locationId = "101020100",
+                forceRefresh = false,
+            )
         } returns WeatherIndicesFetchResult.Empty
         val useCase = GetWeatherIndicesUseCase(weatherRepository)
 
@@ -22,7 +25,10 @@ class GetWeatherIndicesUseCaseTest {
 
         assertThat(result).isEqualTo(WeatherIndicesFetchResult.Empty)
         coVerify(exactly = 1) {
-            weatherRepository.fetchWeatherIndices(locationId = "101020100")
+            weatherRepository.fetchWeatherIndices(
+                locationId = "101020100",
+                forceRefresh = false,
+            )
         }
     }
 }

@@ -262,7 +262,18 @@ class WeatherDetailViewModelTest {
         viewModel.retryHourlySection()
         dispatcher.scheduler.advanceUntilIdle()
 
-        coVerify(atLeast = 2) { refreshHourly.invoke("101020100") }
+        coVerify(atLeast = 1) {
+            refreshHourly.invoke(
+                cityId = "101020100",
+                forceRefresh = false,
+            )
+        }
+        coVerify(atLeast = 1) {
+            refreshHourly.invoke(
+                cityId = "101020100",
+                forceRefresh = true,
+            )
+        }
     }
 
     private fun createViewModel(
@@ -290,17 +301,50 @@ class WeatherDetailViewModelTest {
         val getWeatherAlertsUseCase = mockk<GetWeatherAlertsUseCase>().also { useCase ->
             if (alertFailure != null) {
                 coEvery {
-                    useCase.invoke(latitude = "31.23", longitude = "121.47")
+                    useCase.invoke(
+                        latitude = "31.23",
+                        longitude = "121.47",
+                        forceRefresh = false,
+                    )
+                } throws alertFailure
+                coEvery {
+                    useCase.invoke(
+                        latitude = "31.23",
+                        longitude = "121.47",
+                        forceRefresh = true,
+                    )
                 } throws alertFailure
             } else {
                 coEvery {
-                    useCase.invoke(latitude = "31.23", longitude = "121.47")
+                    useCase.invoke(
+                        latitude = "31.23",
+                        longitude = "121.47",
+                        forceRefresh = false,
+                    )
+                } returns alertResult
+                coEvery {
+                    useCase.invoke(
+                        latitude = "31.23",
+                        longitude = "121.47",
+                        forceRefresh = true,
+                    )
                 } returns alertResult
             }
         }
         val getMinutePrecipitationUseCase = mockk<GetMinutePrecipitationUseCase>().also { useCase ->
             coEvery {
-                useCase.invoke(latitude = "31.23", longitude = "121.47")
+                useCase.invoke(
+                    latitude = "31.23",
+                    longitude = "121.47",
+                    forceRefresh = false,
+                )
+            } returns minutePrecipitationResult
+            coEvery {
+                useCase.invoke(
+                    latitude = "31.23",
+                    longitude = "121.47",
+                    forceRefresh = true,
+                )
             } returns minutePrecipitationResult
         }
         val astronomyDate = LocalDate
@@ -308,17 +352,48 @@ class WeatherDetailViewModelTest {
             .format(DateTimeFormatter.BASIC_ISO_DATE)
         val getSunriseSunsetUseCase = mockk<GetSunriseSunsetUseCase>().also { useCase ->
             coEvery {
-                useCase.invoke(locationId = "101020100", date = astronomyDate)
+                useCase.invoke(
+                    locationId = "101020100",
+                    date = astronomyDate,
+                    forceRefresh = false,
+                )
+            } returns sunriseSunsetResult
+            coEvery {
+                useCase.invoke(
+                    locationId = "101020100",
+                    date = astronomyDate,
+                    forceRefresh = true,
+                )
             } returns sunriseSunsetResult
         }
         val getWeatherIndicesUseCase = mockk<GetWeatherIndicesUseCase>().also { useCase ->
             coEvery {
-                useCase.invoke(locationId = "101020100")
+                useCase.invoke(
+                    locationId = "101020100",
+                    forceRefresh = false,
+                )
+            } returns weatherIndicesResult
+            coEvery {
+                useCase.invoke(
+                    locationId = "101020100",
+                    forceRefresh = true,
+                )
             } returns weatherIndicesResult
         }
         val getAirQualityUseCase = mockk<GetAirQualityUseCase>().also { useCase ->
             coEvery {
-                useCase.invoke(latitude = "31.23", longitude = "121.47")
+                useCase.invoke(
+                    latitude = "31.23",
+                    longitude = "121.47",
+                    forceRefresh = false,
+                )
+            } returns airQualityResult
+            coEvery {
+                useCase.invoke(
+                    latitude = "31.23",
+                    longitude = "121.47",
+                    forceRefresh = true,
+                )
             } returns airQualityResult
         }
         return WeatherDetailViewModel(

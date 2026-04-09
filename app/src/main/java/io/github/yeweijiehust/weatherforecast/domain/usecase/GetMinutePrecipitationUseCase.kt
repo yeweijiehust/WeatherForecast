@@ -10,10 +10,12 @@ class GetMinutePrecipitationUseCase @Inject constructor(
     suspend operator fun invoke(
         latitude: String,
         longitude: String,
+        forceRefresh: Boolean = false,
     ): MinutePrecipitationFetchResult {
         return weatherRepository.fetchMinutePrecipitation(
             latitude = latitude,
             longitude = longitude,
+            forceRefresh = forceRefresh,
         )
     }
 }

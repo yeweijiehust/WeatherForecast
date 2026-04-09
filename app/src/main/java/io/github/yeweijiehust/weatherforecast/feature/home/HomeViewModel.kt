@@ -79,7 +79,10 @@ class HomeViewModel @Inject constructor(
 
     fun onPullToRefresh() {
         val city = activeCity ?: return
-        triggerRefresh(city)
+        triggerRefresh(
+            city = city,
+            forceRefresh = true,
+        )
     }
 
     private fun observeCityData(city: City) {
@@ -116,10 +119,16 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
-        triggerRefresh(city)
+        triggerRefresh(
+            city = city,
+            forceRefresh = false,
+        )
     }
 
-    private fun triggerRefresh(city: City) {
+    private fun triggerRefresh(
+        city: City,
+        forceRefresh: Boolean,
+    ) {
         if (refreshJob?.isActive == true) return
         refreshJob = viewModelScope.launch {
             val snapshotBeforeRefresh = latestSnapshotFor(city.id)
@@ -133,7 +142,10 @@ class HomeViewModel @Inject constructor(
                 )
             }
 
-            val refreshRunOutcome = refreshCurrentHourlyDailyAndSecondaryWeather(city)
+            val refreshRunOutcome = refreshCurrentHourlyDailyAndSecondaryWeather(
+                city = city,
+                forceRefresh = forceRefresh,
+            )
             val refreshOutcome = refreshRunOutcome.refreshOutcome
             latestSecondarySummary = refreshRunOutcome.secondarySummary
             updateSnapshotWithSecondarySummary(city.id)
@@ -213,15 +225,40 @@ class HomeViewModel @Inject constructor(
         }.maxOrNull() ?: currentWeather.fetchedAtEpochMillis
     }
 
-    private suspend fun refreshCurrentHourlyDailyAndSecondaryWeather(city: City): RefreshRunOutcome = coroutineScope {
-        val currentRefresh = async { runCatching { refreshCurrentWeatherUseCase(city.id) } }
-        val hourlyRefresh = async { runCatching { refreshHourlyForecastUseCase(city.id) } }
-        val dailyRefresh = async { runCatching { refreshDailyForecastUseCase(city.id) } }
+    private suspend fun refreshCurrentHourlyDailyAndSecondaryWeather(
+        city: City,
+        forceRefresh: Boolean,
+    ): RefreshRunOutcome = coroutineScope {
+        val currentRefresh = async {
+            runCatching {
+                refreshCurrentWeatherUseCase(
+                    cityId = city.id,
+                    forceRefresh = forceRefresh,
+                )
+            }
+        }
+        val hourlyRefresh = async {
+            runCatching {
+                refreshHourlyForecastUseCase(
+                    cityId = city.id,
+                    forceRefresh = forceRefresh,
+                )
+            }
+        }
+        val dailyRefresh = async {
+            runCatching {
+                refreshDailyForecastUseCase(
+                    cityId = city.id,
+                    forceRefresh = forceRefresh,
+                )
+            }
+        }
         val alertsRefresh = async {
             runCatching {
                 getWeatherAlertsUseCase(
                     latitude = city.lat,
                     longitude = city.lon,
+                    forceRefresh = forceRefresh,
                 )
             }
         }
@@ -230,6 +267,7 @@ class HomeViewModel @Inject constructor(
                 getAirQualityUseCase(
                     latitude = city.lat,
                     longitude = city.lon,
+                    forceRefresh = forceRefresh,
                 )
             }
         }

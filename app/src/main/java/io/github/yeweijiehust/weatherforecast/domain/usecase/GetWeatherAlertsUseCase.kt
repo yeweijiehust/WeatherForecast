@@ -10,10 +10,12 @@ class GetWeatherAlertsUseCase @Inject constructor(
     suspend operator fun invoke(
         latitude: String,
         longitude: String,
+        forceRefresh: Boolean = false,
     ): WeatherAlertFetchResult {
         return weatherRepository.fetchWeatherAlerts(
             latitude = latitude,
             longitude = longitude,
+            forceRefresh = forceRefresh,
         )
     }
 }

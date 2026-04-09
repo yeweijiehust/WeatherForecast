@@ -17,6 +17,7 @@ class GetMinutePrecipitationUseCaseTest {
             weatherRepository.fetchMinutePrecipitation(
                 latitude = "31.23",
                 longitude = "121.47",
+                forceRefresh = false,
             )
         } returns MinutePrecipitationFetchResult.UnsupportedRegion
         val useCase = GetMinutePrecipitationUseCase(weatherRepository)
@@ -28,6 +29,7 @@ class GetMinutePrecipitationUseCaseTest {
             weatherRepository.fetchMinutePrecipitation(
                 latitude = "31.23",
                 longitude = "121.47",
+                forceRefresh = false,
             )
         }
     }

@@ -9,7 +9,11 @@ class GetWeatherIndicesUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(
         locationId: String,
+        forceRefresh: Boolean = false,
     ): WeatherIndicesFetchResult {
-        return weatherRepository.fetchWeatherIndices(locationId = locationId)
+        return weatherRepository.fetchWeatherIndices(
+            locationId = locationId,
+            forceRefresh = forceRefresh,
+        )
     }
 }
