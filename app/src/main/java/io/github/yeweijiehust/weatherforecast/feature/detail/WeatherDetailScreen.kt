@@ -14,12 +14,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.localization.LocalWeatherForecastContext
 import io.github.yeweijiehust.weatherforecast.core.localization.localizedStringResource
+import io.github.yeweijiehust.weatherforecast.core.ui.resolve
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
@@ -30,9 +33,18 @@ import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndices
 
 @Composable
 fun WeatherDetailRoute(
+    onShowMessage: (String) -> Unit,
     viewModel: WeatherDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalWeatherForecastContext.current
+    LaunchedEffect(viewModel, context) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is WeatherDetailEvent.ShowMessage -> onShowMessage(event.message.resolve(context))
+            }
+        }
+    }
     WeatherDetailScreen(
         uiState = uiState,
         onRetryHourly = viewModel::retryHourlySection,

@@ -5,7 +5,9 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import io.github.yeweijiehust.weatherforecast.R
 import io.github.yeweijiehust.weatherforecast.core.localization.WeatherForecastLocalizedContent
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.AppLanguage
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.ui.theme.WeatherForecastTheme
@@ -144,6 +146,21 @@ class CitySearchScreenTest {
         composeTestRule.onNodeWithText("Shanghai").performClick()
 
         assertEquals("Shanghai", selectedSuggestion)
+    }
+
+    @Test
+    fun errorState_showsRetryAction() {
+        composeTestRule.renderSearchScreen(
+            uiState = CitySearchUiState(
+                query = "Nanjing",
+                resultState = CitySearchResultState.Error(
+                    query = "Nanjing",
+                    message = UiText.StringResource(R.string.search_error_generic),
+                ),
+            ),
+        )
+
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
     }
 
     private fun ComposeContentTestRule.renderSearchScreen(

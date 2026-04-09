@@ -1,5 +1,6 @@
 package io.github.yeweijiehust.weatherforecast.feature.detail
 
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.City
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
@@ -56,4 +57,10 @@ enum class WeatherDetailSection {
     MinutePrecipitation,
     Astronomy,
     Indices,
+}
+
+sealed interface WeatherDetailEvent {
+    data class ShowMessage(
+        val message: UiText,
+    ) : WeatherDetailEvent
 }

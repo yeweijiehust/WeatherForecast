@@ -1,7 +1,10 @@
 package io.github.yeweijiehust.weatherforecast.feature.detail
 
 import androidx.lifecycle.SavedStateHandle
+import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.core.navigation.WeatherForecastDestination
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFailureReason
@@ -39,6 +42,7 @@ import io.mockk.mockk
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -274,6 +278,84 @@ class WeatherDetailViewModelTest {
                 forceRefresh = true,
             )
         }
+    }
+
+    @Test
+    fun retryHourlySection_whenRefreshFails_emitsSnackbarEvent() = runTest {
+        val refreshHourly = mockk<RefreshHourlyForecastUseCase>()
+        coEvery {
+            refreshHourly.invoke(
+                cityId = "101020100",
+                forceRefresh = false,
+            )
+        } returns Unit
+        coEvery {
+            refreshHourly.invoke(
+                cityId = "101020100",
+                forceRefresh = true,
+            )
+        } throws IllegalStateException("boom")
+        val viewModel = createViewModel(
+            citiesFlow = MutableStateFlow(listOf(sampleCity())),
+            hourlyFlow = MutableStateFlow(emptyList()),
+            dailyFlow = MutableStateFlow(listOf(sampleDailyForecast())),
+            weatherIndicesResult = WeatherIndicesFetchResult.Empty,
+            refreshHourlyForecastUseCase = refreshHourly,
+        )
+
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.events.test {
+            viewModel.retryHourlySection()
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo(
+                WeatherDetailEvent.ShowMessage(
+                    message = UiText.StringResource(R.string.snackbar_refresh_failed),
+                ),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun retryHourlySection_ignoresDuplicateRequestWhileInFlight() = runTest {
+        val refreshHourly = mockk<RefreshHourlyForecastUseCase>()
+        val gate = CompletableDeferred<Unit>()
+        coEvery {
+            refreshHourly.invoke(
+                cityId = "101020100",
+                forceRefresh = false,
+            )
+        } returns Unit
+        coEvery {
+            refreshHourly.invoke(
+                cityId = "101020100",
+                forceRefresh = true,
+            )
+        } coAnswers { gate.await() }
+        val viewModel = createViewModel(
+            citiesFlow = MutableStateFlow(listOf(sampleCity())),
+            hourlyFlow = MutableStateFlow(listOf(sampleHourlyForecast())),
+            dailyFlow = MutableStateFlow(listOf(sampleDailyForecast())),
+            weatherIndicesResult = WeatherIndicesFetchResult.Empty,
+            refreshHourlyForecastUseCase = refreshHourly,
+        )
+
+        dispatcher.scheduler.advanceUntilIdle()
+        viewModel.retryHourlySection()
+        dispatcher.scheduler.runCurrent()
+        viewModel.retryHourlySection()
+        dispatcher.scheduler.runCurrent()
+
+        coVerify(exactly = 1) {
+            refreshHourly.invoke(
+                cityId = "101020100",
+                forceRefresh = true,
+            )
+        }
+
+        gate.complete(Unit)
+        dispatcher.scheduler.advanceUntilIdle()
     }
 
     private fun createViewModel(

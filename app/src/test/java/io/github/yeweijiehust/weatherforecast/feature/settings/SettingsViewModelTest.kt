@@ -11,6 +11,7 @@ import io.github.yeweijiehust.weatherforecast.domain.usecase.ClearWeatherCacheUs
 import io.github.yeweijiehust.weatherforecast.domain.usecase.ObserveAppSettingsUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.UpdateLanguageUseCase
 import io.github.yeweijiehust.weatherforecast.domain.usecase.UpdateUnitSystemUseCase
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -88,6 +89,25 @@ class SettingsViewModelTest {
             coVerify(exactly = 1) { clearWeatherCacheUseCase.invoke() }
             assertThat(awaitItem()).isEqualTo(
                 SettingsEvent.ShowMessage(UiText.StringResource(R.string.snackbar_cache_cleared)),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun clearCache_whenUseCaseFails_emitsFailureMessage() = runTest {
+        val clearWeatherCacheUseCase = mockk<ClearWeatherCacheUseCase>()
+        coEvery { clearWeatherCacheUseCase.invoke() } throws IllegalStateException("boom")
+        val viewModel = createViewModel(clearWeatherCacheUseCase = clearWeatherCacheUseCase)
+
+        viewModel.events.test {
+            viewModel.clearWeatherCache()
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo(
+                SettingsEvent.ShowMessage(
+                    UiText.StringResource(R.string.snackbar_operation_failed_try_again),
+                ),
             )
             cancelAndIgnoreRemainingEvents()
         }

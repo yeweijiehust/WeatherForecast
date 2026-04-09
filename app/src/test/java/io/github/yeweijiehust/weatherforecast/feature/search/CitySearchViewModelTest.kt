@@ -135,16 +135,24 @@ class CitySearchViewModelTest {
         )
         viewModel.onQueryChanged("Nanjing")
 
-        viewModel.search()
-        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.events.test {
+            viewModel.search()
+            testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.resultState)
-            .isEqualTo(
-                CitySearchResultState.Error(
-                    query = "Nanjing",
+            assertThat(viewModel.uiState.value.resultState)
+                .isEqualTo(
+                    CitySearchResultState.Error(
+                        query = "Nanjing",
+                        message = UiText.StringResource(R.string.search_error_generic),
+                    ),
+                )
+            assertThat(awaitItem()).isEqualTo(
+                CitySearchEvent.ShowMessage(
                     message = UiText.StringResource(R.string.search_error_generic),
                 ),
             )
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

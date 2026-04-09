@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.yeweijiehust.weatherforecast.R
+import io.github.yeweijiehust.weatherforecast.core.ui.UiText
 import io.github.yeweijiehust.weatherforecast.core.navigation.WeatherForecastDestination
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
@@ -30,8 +32,11 @@ import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshDailyForecas
 import io.github.yeweijiehust.weatherforecast.domain.usecase.RefreshHourlyForecastUseCase
 import javax.inject.Inject
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -57,6 +62,8 @@ class WeatherDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(WeatherDetailUiState())
     val uiState: StateFlow<WeatherDetailUiState> = _uiState.asStateFlow()
+    private val _events = MutableSharedFlow<WeatherDetailEvent>()
+    val events: SharedFlow<WeatherDetailEvent> = _events.asSharedFlow()
 
     private var activeCity: City? = null
     private var observeHourlyJob: Job? = null
@@ -72,6 +79,8 @@ class WeatherDetailViewModel @Inject constructor(
     private var airQuality: AirQuality? = null
     private var isAirQualityUnsupported = false
     private val unavailableSections = linkedSetOf<WeatherDetailSection>()
+    private val refreshGuardLock = Any()
+    private val inFlightRefreshKeys = mutableSetOf<RefreshKey>()
 
     init {
         if (cityId.isBlank()) {
@@ -94,72 +103,72 @@ class WeatherDetailViewModel @Inject constructor(
 
     fun retryHourlySection() {
         val city = activeCity ?: return
-        viewModelScope.launch {
-            refreshHourlySection(
-                cityId = city.id,
-                forceRefresh = true,
-            )
-        }
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.HourlyForecast,
+            forceRefresh = true,
+            notifyFailure = true,
+        )
     }
 
     fun retryDailySection() {
         val city = activeCity ?: return
-        viewModelScope.launch {
-            refreshDailySection(
-                cityId = city.id,
-                forceRefresh = true,
-            )
-        }
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.DailyForecast,
+            forceRefresh = true,
+            notifyFailure = true,
+        )
     }
 
     fun retryAlertsSection() {
         val city = activeCity ?: return
-        viewModelScope.launch {
-            refreshAlertsSection(
-                city = city,
-                forceRefresh = true,
-            )
-        }
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.Alerts,
+            forceRefresh = true,
+            notifyFailure = true,
+        )
     }
 
     fun retryMinutePrecipitationSection() {
         val city = activeCity ?: return
-        viewModelScope.launch {
-            refreshMinutePrecipitationSection(
-                city = city,
-                forceRefresh = true,
-            )
-        }
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.MinutePrecipitation,
+            forceRefresh = true,
+            notifyFailure = true,
+        )
     }
 
     fun retryAstronomySection() {
         val city = activeCity ?: return
-        viewModelScope.launch {
-            refreshAstronomySection(
-                city = city,
-                forceRefresh = true,
-            )
-        }
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.Astronomy,
+            forceRefresh = true,
+            notifyFailure = true,
+        )
     }
 
     fun retryIndicesSection() {
         val city = activeCity ?: return
-        viewModelScope.launch {
-            refreshIndicesSection(
-                city = city,
-                forceRefresh = true,
-            )
-        }
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.Indices,
+            forceRefresh = true,
+            notifyFailure = true,
+        )
     }
 
     fun retryAirQualitySection() {
         val city = activeCity ?: return
-        viewModelScope.launch {
-            refreshAirQualitySection(
-                city = city,
-                forceRefresh = true,
-            )
-        }
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.AirQuality,
+            forceRefresh = true,
+            notifyFailure = true,
+        )
     }
 
     private fun initializeForCity(city: City) {
@@ -176,13 +185,48 @@ class WeatherDetailViewModel @Inject constructor(
         unavailableSections.clear()
         _uiState.value = WeatherDetailUiState(state = WeatherDetailState.Loading)
         startForecastObservation(city.id)
-        viewModelScope.launch { refreshHourlySection(city.id, forceRefresh = false) }
-        viewModelScope.launch { refreshDailySection(city.id, forceRefresh = false) }
-        viewModelScope.launch { refreshMinutePrecipitationSection(city, forceRefresh = false) }
-        viewModelScope.launch { refreshAstronomySection(city, forceRefresh = false) }
-        viewModelScope.launch { refreshIndicesSection(city, forceRefresh = false) }
-        viewModelScope.launch { refreshAlertsSection(city, forceRefresh = false) }
-        viewModelScope.launch { refreshAirQualitySection(city, forceRefresh = false) }
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.HourlyForecast,
+            forceRefresh = false,
+            notifyFailure = false,
+        )
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.DailyForecast,
+            forceRefresh = false,
+            notifyFailure = false,
+        )
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.MinutePrecipitation,
+            forceRefresh = false,
+            notifyFailure = false,
+        )
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.Astronomy,
+            forceRefresh = false,
+            notifyFailure = false,
+        )
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.Indices,
+            forceRefresh = false,
+            notifyFailure = false,
+        )
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.Alerts,
+            forceRefresh = false,
+            notifyFailure = false,
+        )
+        launchSectionRefresh(
+            cityId = city.id,
+            section = WeatherDetailSection.AirQuality,
+            forceRefresh = false,
+            notifyFailure = false,
+        )
     }
 
     private fun startForecastObservation(cityId: String) {
@@ -209,18 +253,109 @@ class WeatherDetailViewModel @Inject constructor(
         }
     }
 
+    private fun launchSectionRefresh(
+        cityId: String,
+        section: WeatherDetailSection,
+        forceRefresh: Boolean,
+        notifyFailure: Boolean,
+    ) {
+        viewModelScope.launch {
+            val refreshKey = RefreshKey(
+                cityId = cityId,
+                section = section,
+            )
+            if (!tryAcquireRefresh(refreshKey)) {
+                return@launch
+            }
+            try {
+                when (section) {
+                    WeatherDetailSection.HourlyForecast -> refreshHourlySection(
+                        cityId = cityId,
+                        forceRefresh = forceRefresh,
+                        notifyFailure = notifyFailure,
+                    )
+
+                    WeatherDetailSection.DailyForecast -> refreshDailySection(
+                        cityId = cityId,
+                        forceRefresh = forceRefresh,
+                        notifyFailure = notifyFailure,
+                    )
+
+                    WeatherDetailSection.Alerts -> {
+                        val city = activeCity ?: return@launch
+                        if (city.id != cityId) return@launch
+                        refreshAlertsSection(
+                            city = city,
+                            forceRefresh = forceRefresh,
+                            notifyFailure = notifyFailure,
+                        )
+                    }
+
+                    WeatherDetailSection.AirQuality -> {
+                        val city = activeCity ?: return@launch
+                        if (city.id != cityId) return@launch
+                        refreshAirQualitySection(
+                            city = city,
+                            forceRefresh = forceRefresh,
+                            notifyFailure = notifyFailure,
+                        )
+                    }
+
+                    WeatherDetailSection.MinutePrecipitation -> {
+                        val city = activeCity ?: return@launch
+                        if (city.id != cityId) return@launch
+                        refreshMinutePrecipitationSection(
+                            city = city,
+                            forceRefresh = forceRefresh,
+                            notifyFailure = notifyFailure,
+                        )
+                    }
+
+                    WeatherDetailSection.Astronomy -> {
+                        val city = activeCity ?: return@launch
+                        if (city.id != cityId) return@launch
+                        refreshAstronomySection(
+                            city = city,
+                            forceRefresh = forceRefresh,
+                            notifyFailure = notifyFailure,
+                        )
+                    }
+
+                    WeatherDetailSection.Indices -> {
+                        val city = activeCity ?: return@launch
+                        if (city.id != cityId) return@launch
+                        refreshIndicesSection(
+                            city = city,
+                            forceRefresh = forceRefresh,
+                            notifyFailure = notifyFailure,
+                        )
+                    }
+                }
+            } finally {
+                releaseRefresh(refreshKey)
+            }
+        }
+    }
+
     private suspend fun refreshHourlySection(
         cityId: String,
         forceRefresh: Boolean,
+        notifyFailure: Boolean,
     ) {
+        if (activeCity?.id != cityId) return
         val result = runCatching {
             refreshHourlyForecastUseCase(
                 cityId = cityId,
                 forceRefresh = forceRefresh,
             )
         }
-        if (result.isFailure && hourlyForecast.orEmpty().isEmpty()) {
-            unavailableSections.add(WeatherDetailSection.HourlyForecast)
+        if (result.isFailure) {
+            if (hourlyForecast.orEmpty().isEmpty()) {
+                unavailableSections.add(WeatherDetailSection.HourlyForecast)
+            }
+            if (notifyFailure) {
+                emitRetryFailedMessage()
+            }
         } else if (result.isSuccess) {
             unavailableSections.remove(WeatherDetailSection.HourlyForecast)
         }
@@ -230,15 +365,22 @@ class WeatherDetailViewModel @Inject constructor(
     private suspend fun refreshDailySection(
         cityId: String,
         forceRefresh: Boolean,
+        notifyFailure: Boolean,
     ) {
+        if (activeCity?.id != cityId) return
         val result = runCatching {
             refreshDailyForecastUseCase(
                 cityId = cityId,
                 forceRefresh = forceRefresh,
             )
         }
-        if (result.isFailure && dailyForecast.orEmpty().isEmpty()) {
-            unavailableSections.add(WeatherDetailSection.DailyForecast)
+        if (result.isFailure) {
+            if (dailyForecast.orEmpty().isEmpty()) {
+                unavailableSections.add(WeatherDetailSection.DailyForecast)
+            }
+            if (notifyFailure) {
+                emitRetryFailedMessage()
+            }
         } else if (result.isSuccess) {
             unavailableSections.remove(WeatherDetailSection.DailyForecast)
         }
@@ -248,7 +390,9 @@ class WeatherDetailViewModel @Inject constructor(
     private suspend fun refreshAlertsSection(
         city: City,
         forceRefresh: Boolean,
+        notifyFailure: Boolean,
     ) {
+        if (activeCity?.id != city.id) return
         val result = runCatching {
             getWeatherAlertsUseCase(
                 latitude = city.lat,
@@ -259,6 +403,9 @@ class WeatherDetailViewModel @Inject constructor(
         result.onFailure {
             alerts = emptyList()
             unavailableSections.add(WeatherDetailSection.Alerts)
+            if (notifyFailure) {
+                emitRetryFailedMessage()
+            }
             emitStateIfReady()
             return
         }
@@ -279,7 +426,9 @@ class WeatherDetailViewModel @Inject constructor(
     private suspend fun refreshMinutePrecipitationSection(
         city: City,
         forceRefresh: Boolean,
+        notifyFailure: Boolean,
     ) {
+        if (activeCity?.id != city.id) return
         val result = runCatching {
             getMinutePrecipitationUseCase(
                 latitude = city.lat,
@@ -291,6 +440,9 @@ class WeatherDetailViewModel @Inject constructor(
             minutePrecipitation = null
             isMinutePrecipitationUnsupported = false
             unavailableSections.add(WeatherDetailSection.MinutePrecipitation)
+            if (notifyFailure) {
+                emitRetryFailedMessage()
+            }
             emitStateIfReady()
             return
         }
@@ -311,6 +463,9 @@ class WeatherDetailViewModel @Inject constructor(
                 minutePrecipitation = null
                 isMinutePrecipitationUnsupported = false
                 unavailableSections.add(WeatherDetailSection.MinutePrecipitation)
+                if (notifyFailure) {
+                    emitRetryFailedMessage()
+                }
             }
         }
         emitStateIfReady()
@@ -319,7 +474,9 @@ class WeatherDetailViewModel @Inject constructor(
     private suspend fun refreshAstronomySection(
         city: City,
         forceRefresh: Boolean,
+        notifyFailure: Boolean,
     ) {
+        if (activeCity?.id != city.id) return
         val date = currentDateInCity(city.timeZone)
         val result = runCatching {
             getSunriseSunsetUseCase(
@@ -331,6 +488,9 @@ class WeatherDetailViewModel @Inject constructor(
         result.onFailure {
             sunriseSunset = null
             unavailableSections.add(WeatherDetailSection.Astronomy)
+            if (notifyFailure) {
+                emitRetryFailedMessage()
+            }
             emitStateIfReady()
             return
         }
@@ -343,6 +503,9 @@ class WeatherDetailViewModel @Inject constructor(
             is SunriseSunsetFetchResult.Failure -> {
                 sunriseSunset = null
                 unavailableSections.add(WeatherDetailSection.Astronomy)
+                if (notifyFailure) {
+                    emitRetryFailedMessage()
+                }
             }
         }
         emitStateIfReady()
@@ -351,7 +514,9 @@ class WeatherDetailViewModel @Inject constructor(
     private suspend fun refreshIndicesSection(
         city: City,
         forceRefresh: Boolean,
+        notifyFailure: Boolean,
     ) {
+        if (activeCity?.id != city.id) return
         val result = runCatching {
             getWeatherIndicesUseCase(
                 locationId = city.id,
@@ -361,6 +526,9 @@ class WeatherDetailViewModel @Inject constructor(
         result.onFailure {
             weatherIndices = null
             unavailableSections.add(WeatherDetailSection.Indices)
+            if (notifyFailure) {
+                emitRetryFailedMessage()
+            }
             emitStateIfReady()
             return
         }
@@ -378,6 +546,9 @@ class WeatherDetailViewModel @Inject constructor(
             is WeatherIndicesFetchResult.Failure -> {
                 weatherIndices = null
                 unavailableSections.add(WeatherDetailSection.Indices)
+                if (notifyFailure) {
+                    emitRetryFailedMessage()
+                }
             }
         }
         emitStateIfReady()
@@ -386,7 +557,9 @@ class WeatherDetailViewModel @Inject constructor(
     private suspend fun refreshAirQualitySection(
         city: City,
         forceRefresh: Boolean,
+        notifyFailure: Boolean,
     ) {
+        if (activeCity?.id != city.id) return
         val result = runCatching {
             getAirQualityUseCase(
                 latitude = city.lat,
@@ -398,6 +571,9 @@ class WeatherDetailViewModel @Inject constructor(
             airQuality = null
             isAirQualityUnsupported = false
             unavailableSections.add(WeatherDetailSection.AirQuality)
+            if (notifyFailure) {
+                emitRetryFailedMessage()
+            }
             emitStateIfReady()
             return
         }
@@ -418,6 +594,9 @@ class WeatherDetailViewModel @Inject constructor(
                 airQuality = null
                 isAirQualityUnsupported = false
                 unavailableSections.add(WeatherDetailSection.AirQuality)
+                if (notifyFailure) {
+                    emitRetryFailedMessage()
+                }
             }
         }
         emitStateIfReady()
@@ -465,10 +644,39 @@ class WeatherDetailViewModel @Inject constructor(
         }
     }
 
+    private fun tryAcquireRefresh(
+        refreshKey: RefreshKey,
+    ): Boolean {
+        return synchronized(refreshGuardLock) {
+            inFlightRefreshKeys.add(refreshKey)
+        }
+    }
+
+    private fun releaseRefresh(
+        refreshKey: RefreshKey,
+    ) {
+        synchronized(refreshGuardLock) {
+            inFlightRefreshKeys.remove(refreshKey)
+        }
+    }
+
+    private suspend fun emitRetryFailedMessage() {
+        _events.emit(
+            WeatherDetailEvent.ShowMessage(
+                message = UiText.StringResource(R.string.snackbar_refresh_failed),
+            ),
+        )
+    }
+
     private fun currentDateInCity(timeZoneId: String): String {
         val zoneId = runCatching {
             ZoneId.of(timeZoneId)
         }.getOrDefault(ZoneId.systemDefault())
         return LocalDate.now(zoneId).format(DateTimeFormatter.BASIC_ISO_DATE)
     }
+
+    private data class RefreshKey(
+        val cityId: String,
+        val section: WeatherDetailSection,
+    )
 }

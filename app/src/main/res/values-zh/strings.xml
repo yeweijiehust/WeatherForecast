@@ -83,7 +83,7 @@
 
     <string name="detail_loading">正在加载天气详情…</string>
     <string name="detail_title_for_city">%1$s 的天气详情</string>
-    <string name="detail_placeholder_body">Post-MVP 详情模块将按步骤逐步启用。</string>
+    <string name="detail_placeholder_body">MVP 后的详情模块将按步骤逐步启用。</string>
     <string name="detail_partial_content">部分详情数据当前不可用。</string>
     <string name="detail_hourly_title">逐小时预报</string>
     <string name="detail_hourly_empty">当前暂无逐小时预报数据。</string>
@@ -139,4 +139,5 @@
     <string name="snackbar_cache_cleared">已清除天气缓存。</string>
     <string name="snackbar_refresh_failed">刷新失败。</string>
     <string name="snackbar_stale_cache_shown">网络失败，当前显示缓存天气。</string>
+    <string name="snackbar_operation_failed_try_again">操作失败，请重试。</string>
 </resources>

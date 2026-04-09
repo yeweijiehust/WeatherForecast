@@ -101,6 +101,11 @@ class CitySearchViewModel @Inject constructor(
                         ),
                     )
                 }
+                _events.emit(
+                    CitySearchEvent.ShowMessage(
+                        UiText.StringResource(R.string.search_error_generic),
+                    ),
+                )
             }
         }
     }
@@ -116,34 +121,61 @@ class CitySearchViewModel @Inject constructor(
 
     fun saveCity(city: City) {
         viewModelScope.launch {
-            val result = saveCityUseCase(city)
-            val message = when (result) {
-                SaveCityResult.Saved -> UiText.StringResource(R.string.snackbar_city_saved)
-                SaveCityResult.Duplicate -> UiText.StringResource(R.string.snackbar_city_already_saved)
+            runCatching {
+                saveCityUseCase(city)
+            }.onSuccess { result ->
+                val message = when (result) {
+                    SaveCityResult.Saved -> UiText.StringResource(R.string.snackbar_city_saved)
+                    SaveCityResult.Duplicate -> UiText.StringResource(R.string.snackbar_city_already_saved)
+                }
+                _events.emit(CitySearchEvent.ShowMessage(message))
+            }.onFailure {
+                _events.emit(
+                    CitySearchEvent.ShowMessage(
+                        UiText.StringResource(R.string.snackbar_operation_failed_try_again),
+                    ),
+                )
             }
-            _events.emit(CitySearchEvent.ShowMessage(message))
         }
     }
 
     fun setDefaultCity(cityId: String) {
         viewModelScope.launch {
-            setDefaultCityUseCase(cityId)
-            _events.emit(
-                CitySearchEvent.ShowMessage(
-                    UiText.StringResource(R.string.snackbar_default_city_updated),
-                ),
-            )
+            runCatching {
+                setDefaultCityUseCase(cityId)
+            }.onSuccess {
+                _events.emit(
+                    CitySearchEvent.ShowMessage(
+                        UiText.StringResource(R.string.snackbar_default_city_updated),
+                    ),
+                )
+            }.onFailure {
+                _events.emit(
+                    CitySearchEvent.ShowMessage(
+                        UiText.StringResource(R.string.snackbar_operation_failed_try_again),
+                    ),
+                )
+            }
         }
     }
 
     fun removeCity(cityId: String) {
         viewModelScope.launch {
-            removeSavedCityUseCase(cityId)
-            _events.emit(
-                CitySearchEvent.ShowMessage(
-                    UiText.StringResource(R.string.snackbar_city_removed),
-                ),
-            )
+            runCatching {
+                removeSavedCityUseCase(cityId)
+            }.onSuccess {
+                _events.emit(
+                    CitySearchEvent.ShowMessage(
+                        UiText.StringResource(R.string.snackbar_city_removed),
+                    ),
+                )
+            }.onFailure {
+                _events.emit(
+                    CitySearchEvent.ShowMessage(
+                        UiText.StringResource(R.string.snackbar_operation_failed_try_again),
+                    ),
+                )
+            }
         }
     }
 

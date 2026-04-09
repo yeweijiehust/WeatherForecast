@@ -151,7 +151,13 @@ fun WeatherForecastApp() {
                         },
                     ),
                 ) {
-                    WeatherDetailRoute()
+                    WeatherDetailRoute(
+                        onShowMessage = { message ->
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(message)
+                            }
+                        },
+                    )
                 }
             }
         }

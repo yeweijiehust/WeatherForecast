@@ -130,6 +130,25 @@ class CitySearchManagementViewModelTest {
         }
     }
 
+    @Test
+    fun setDefaultCity_whenUseCaseFails_emitsFailureMessage() = runTest {
+        val setDefaultCityUseCase = mockk<SetDefaultCityUseCase>()
+        coEvery { setDefaultCityUseCase.invoke("101020100") } throws IllegalStateException("boom")
+        val viewModel = createViewModel(setDefaultCityUseCase = setDefaultCityUseCase)
+
+        viewModel.events.test {
+            viewModel.setDefaultCity("101020100")
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo(
+                CitySearchEvent.ShowMessage(
+                    UiText.StringResource(R.string.snackbar_operation_failed_try_again),
+                ),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private fun createViewModel(
         savedCitiesFlow: MutableStateFlow<List<City>> = MutableStateFlow(emptyList()),
         saveCityUseCase: SaveCityUseCase = mockk<SaveCityUseCase>().also {

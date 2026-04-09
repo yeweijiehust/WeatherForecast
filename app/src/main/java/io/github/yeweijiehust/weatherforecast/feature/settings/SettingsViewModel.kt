@@ -44,24 +44,49 @@ class SettingsViewModel @Inject constructor(
 
     fun selectLanguage(language: AppLanguage) {
         viewModelScope.launch {
-            updateLanguageUseCase(language)
+            runCatching {
+                updateLanguageUseCase(language)
+            }.onFailure {
+                _events.emit(
+                    SettingsEvent.ShowMessage(
+                        UiText.StringResource(R.string.snackbar_operation_failed_try_again),
+                    ),
+                )
+            }
         }
     }
 
     fun selectUnitSystem(unitSystem: UnitSystem) {
         viewModelScope.launch {
-            updateUnitSystemUseCase(unitSystem)
+            runCatching {
+                updateUnitSystemUseCase(unitSystem)
+            }.onFailure {
+                _events.emit(
+                    SettingsEvent.ShowMessage(
+                        UiText.StringResource(R.string.snackbar_operation_failed_try_again),
+                    ),
+                )
+            }
         }
     }
 
     fun clearWeatherCache() {
         viewModelScope.launch {
-            clearWeatherCacheUseCase()
-            _events.emit(
-                SettingsEvent.ShowMessage(
-                    UiText.StringResource(R.string.snackbar_cache_cleared),
-                ),
-            )
+            runCatching {
+                clearWeatherCacheUseCase()
+            }.onSuccess {
+                _events.emit(
+                    SettingsEvent.ShowMessage(
+                        UiText.StringResource(R.string.snackbar_cache_cleared),
+                    ),
+                )
+            }.onFailure {
+                _events.emit(
+                    SettingsEvent.ShowMessage(
+                        UiText.StringResource(R.string.snackbar_operation_failed_try_again),
+                    ),
+                )
+            }
         }
     }
 }
