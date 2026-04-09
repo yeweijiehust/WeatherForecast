@@ -266,10 +266,11 @@ private fun SnapshotStatusBlock(
     isRefreshing: Boolean,
     isStaleCache: Boolean,
 ) {
+    val locale = appLocale()
     Text(
         text = localizedStringResource(
             R.string.home_last_updated,
-            lastUpdatedEpochMillis.formattedLastUpdatedTime(),
+            lastUpdatedEpochMillis.formattedLastUpdatedTime(locale),
         ),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -321,6 +322,7 @@ private fun CurrentWeatherHeroCard(
     city: City,
     currentWeather: CurrentWeather,
 ) {
+    val locale = appLocale()
     Card(
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -365,7 +367,7 @@ private fun CurrentWeatherHeroCard(
                     Text(
                         text = localizedStringResource(
                             R.string.home_observed_at,
-                            currentWeather.formattedObservationTime(),
+                            currentWeather.formattedObservationTime(locale),
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -566,13 +568,14 @@ private fun HourlyForecastSection(
 private fun HourlyForecastCard(
     hourlyForecast: HourlyForecast,
 ) {
+    val locale = appLocale()
     Card {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                text = hourlyForecast.formattedForecastTime(),
+                text = hourlyForecast.formattedForecastTime(locale),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -630,6 +633,7 @@ private fun DailyForecastSection(
 private fun DailyForecastCard(
     dailyForecast: DailyForecast,
 ) {
+    val locale = appLocale()
     Card(
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -638,7 +642,7 @@ private fun DailyForecastCard(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                text = dailyForecast.formattedForecastDate(),
+                text = dailyForecast.formattedForecastDate(locale),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -673,39 +677,53 @@ private fun cityRegionLine(city: City): String {
         .joinToString()
 }
 
-private fun CurrentWeather.formattedObservationTime(): String {
-    return runCatching {
-        OffsetDateTime.parse(observationTime).format(
-            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-                .withLocale(Locale.getDefault()),
-        )
-    }.getOrDefault(observationTime)
+@Composable
+private fun appLocale(): Locale {
+    val locales = LocalWeatherForecastContext.current.resources.configuration.locales
+    return if (locales.size() > 0) locales[0] else Locale.getDefault()
 }
 
-private fun HourlyForecast.formattedForecastTime(): String {
-    return runCatching {
-        OffsetDateTime.parse(forecastTime).format(
-            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-                .withLocale(Locale.getDefault()),
-        )
-    }.getOrDefault(forecastTime)
+private fun CurrentWeather.formattedObservationTime(locale: Locale): String {
+    return parseOffsetDateTimeSafely(observationTime)?.format(
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale),
+    ) ?: observationTime
 }
 
-private fun DailyForecast.formattedForecastDate(): String {
+private fun HourlyForecast.formattedForecastTime(locale: Locale): String {
+    return parseOffsetDateTimeSafely(forecastTime)?.format(
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale),
+    ) ?: forecastTime
+}
+
+private fun DailyForecast.formattedForecastDate(locale: Locale): String {
+    val formatter = if (locale.language.startsWith("zh")) {
+        DateTimeFormatter.ofPattern("M月d日 EEE", locale)
+    } else {
+        DateTimeFormatter.ofPattern("EEE, MMM d", locale)
+    }
     return runCatching {
-        LocalDate.parse(forecastDate).format(
-            DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()),
-        )
+        LocalDate.parse(forecastDate).format(formatter)
     }.getOrDefault(forecastDate)
 }
 
-private fun Long.formattedLastUpdatedTime(): String {
+private fun Long.formattedLastUpdatedTime(locale: Locale): String {
     return runCatching {
         Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalTime().format(
-            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-                .withLocale(Locale.getDefault()),
+            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale),
         )
     }.getOrDefault(this.toString())
+}
+
+private fun parseOffsetDateTimeSafely(rawValue: String): OffsetDateTime? {
+    val normalizedValue = rawValue.normalizeOneDigitOffset()
+    return runCatching { OffsetDateTime.parse(normalizedValue) }.getOrNull()
+}
+
+private fun String.normalizeOneDigitOffset(): String {
+    val oneDigitOffsetPattern = Regex("([+-])(\\d):(\\d{2})$")
+    return oneDigitOffsetPattern.replace(this) { match ->
+        "${match.groupValues[1]}0${match.groupValues[2]}:${match.groupValues[3]}"
+    }
 }
 
 @Composable

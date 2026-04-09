@@ -30,6 +30,13 @@ import io.github.yeweijiehust.weatherforecast.domain.model.MinutePrecipitationTi
 import io.github.yeweijiehust.weatherforecast.domain.model.SunriseSunset
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 import io.github.yeweijiehust.weatherforecast.domain.model.WeatherIndices
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 
 @Composable
 fun WeatherDetailRoute(
@@ -159,6 +166,7 @@ private fun DetailSections(
     onRetryAlerts: () -> Unit,
     onRetryAirQuality: () -> Unit,
 ) {
+    val locale = appLocale()
     val cityName = when (state) {
         is WeatherDetailState.Content -> state.city.name
         is WeatherDetailState.PartialContent -> state.city.name
@@ -176,32 +184,38 @@ private fun DetailSections(
                 hourlyForecast = state.hourlyForecast,
                 isUnavailable = false,
                 onRetry = onRetryHourly,
+                locale = locale,
             )
             DailySection(
                 dailyForecast = state.dailyForecast,
                 isUnavailable = false,
                 onRetry = onRetryDaily,
+                locale = locale,
             )
             MinutePrecipitationSection(
                 minutePrecipitation = state.minutePrecipitation,
                 isUnsupported = state.isMinutePrecipitationUnsupported,
                 isUnavailable = false,
                 onRetry = onRetryMinutePrecipitation,
+                locale = locale,
             )
             AstronomySection(
                 sunriseSunset = state.sunriseSunset,
                 isUnavailable = false,
                 onRetry = onRetryAstronomy,
+                locale = locale,
             )
             IndicesSection(
                 weatherIndices = state.weatherIndices,
                 isUnavailable = false,
                 onRetry = onRetryIndices,
+                locale = locale,
             )
             AlertSection(
                 alerts = state.alerts,
                 isUnavailable = false,
                 onRetry = onRetryAlerts,
+                locale = locale,
             )
             AirQualitySection(
                 airQuality = state.airQuality,
@@ -216,32 +230,38 @@ private fun DetailSections(
                 hourlyForecast = state.hourlyForecast,
                 isUnavailable = WeatherDetailSection.HourlyForecast in unavailableSections,
                 onRetry = onRetryHourly,
+                locale = locale,
             )
             DailySection(
                 dailyForecast = state.dailyForecast,
                 isUnavailable = WeatherDetailSection.DailyForecast in unavailableSections,
                 onRetry = onRetryDaily,
+                locale = locale,
             )
             MinutePrecipitationSection(
                 minutePrecipitation = state.minutePrecipitation,
                 isUnsupported = state.isMinutePrecipitationUnsupported,
                 isUnavailable = WeatherDetailSection.MinutePrecipitation in unavailableSections,
                 onRetry = onRetryMinutePrecipitation,
+                locale = locale,
             )
             AstronomySection(
                 sunriseSunset = state.sunriseSunset,
                 isUnavailable = WeatherDetailSection.Astronomy in unavailableSections,
                 onRetry = onRetryAstronomy,
+                locale = locale,
             )
             IndicesSection(
                 weatherIndices = state.weatherIndices,
                 isUnavailable = WeatherDetailSection.Indices in unavailableSections,
                 onRetry = onRetryIndices,
+                locale = locale,
             )
             AlertSection(
                 alerts = state.alerts,
                 isUnavailable = WeatherDetailSection.Alerts in unavailableSections,
                 onRetry = onRetryAlerts,
+                locale = locale,
             )
             AirQualitySection(
                 airQuality = state.airQuality,
@@ -260,6 +280,7 @@ private fun HourlySection(
     hourlyForecast: List<HourlyForecast>,
     isUnavailable: Boolean,
     onRetry: () -> Unit,
+    locale: Locale,
 ) {
     Text(
         text = localizedStringResource(R.string.detail_hourly_title),
@@ -293,7 +314,7 @@ private fun HourlySection(
                         Text(
                             text = localizedStringResource(
                                 R.string.detail_hourly_item,
-                                item.forecastTime,
+                                item.forecastTime.formatLocalizedTime(locale),
                                 item.temperature,
                                 item.conditionText,
                             ),
@@ -330,6 +351,7 @@ private fun DailySection(
     dailyForecast: List<DailyForecast>,
     isUnavailable: Boolean,
     onRetry: () -> Unit,
+    locale: Locale,
 ) {
     Text(
         text = localizedStringResource(R.string.detail_daily_title),
@@ -363,7 +385,7 @@ private fun DailySection(
                         Text(
                             text = localizedStringResource(
                                 R.string.detail_daily_item,
-                                item.forecastDate,
+                                item.forecastDate.formatLocalizedDate(locale),
                                 item.tempMax,
                                 item.tempMin,
                                 item.conditionTextDay,
@@ -402,6 +424,7 @@ private fun MinutePrecipitationSection(
     isUnsupported: Boolean,
     isUnavailable: Boolean,
     onRetry: () -> Unit,
+    locale: Locale,
 ) {
     Text(
         text = localizedStringResource(R.string.detail_minutely_title),
@@ -449,7 +472,7 @@ private fun MinutePrecipitationSection(
                     Text(
                         text = localizedStringResource(
                             R.string.detail_minutely_item,
-                            point.forecastTime,
+                            point.forecastTime.formatLocalizedTime(locale),
                             point.precipitation.ifBlank {
                                 localizedStringResource(R.string.detail_fallback_dash)
                             },
@@ -471,6 +494,7 @@ private fun AstronomySection(
     sunriseSunset: SunriseSunset?,
     isUnavailable: Boolean,
     onRetry: () -> Unit,
+    locale: Locale,
 ) {
     Text(
         text = localizedStringResource(R.string.detail_astronomy_title),
@@ -495,7 +519,7 @@ private fun AstronomySection(
                 Text(
                     text = localizedStringResource(
                         R.string.detail_astronomy_update_time,
-                        sunriseSunset.updateTime,
+                        sunriseSunset.updateTime.formatLocalizedDateTime(locale),
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -513,7 +537,7 @@ private fun AstronomySection(
                     Text(
                         text = localizedStringResource(
                             R.string.detail_astronomy_sunrise,
-                            sunriseSunset.sunrise.ifBlank {
+                            sunriseSunset.sunrise.formatLocalizedTime(locale).ifBlank {
                                 localizedStringResource(R.string.detail_fallback_dash)
                             },
                         ),
@@ -522,7 +546,7 @@ private fun AstronomySection(
                     Text(
                         text = localizedStringResource(
                             R.string.detail_astronomy_sunset,
-                            sunriseSunset.sunset.ifBlank {
+                            sunriseSunset.sunset.formatLocalizedTime(locale).ifBlank {
                                 localizedStringResource(R.string.detail_fallback_dash)
                             },
                         ),
@@ -539,6 +563,7 @@ private fun IndicesSection(
     weatherIndices: WeatherIndices?,
     isUnavailable: Boolean,
     onRetry: () -> Unit,
+    locale: Locale,
 ) {
     Text(
         text = localizedStringResource(R.string.detail_indices_title),
@@ -563,7 +588,7 @@ private fun IndicesSection(
                 Text(
                     text = localizedStringResource(
                         R.string.detail_indices_update_time,
-                        weatherIndices.updateTime,
+                        weatherIndices.updateTime.formatLocalizedDateTime(locale),
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -613,6 +638,7 @@ private fun AlertSection(
     alerts: List<WeatherAlert>,
     isUnavailable: Boolean,
     onRetry: () -> Unit,
+    locale: Locale,
 ) {
     Text(
         text = localizedStringResource(R.string.detail_alert_section_title),
@@ -664,8 +690,12 @@ private fun AlertSection(
                 Text(
                     text = localizedStringResource(
                         R.string.detail_alert_time,
-                        alert.startTime.ifBlank { localizedStringResource(R.string.detail_fallback_dash) },
-                        alert.endTime.ifBlank { localizedStringResource(R.string.detail_fallback_dash) },
+                        alert.startTime.formatLocalizedDateTime(locale).ifBlank {
+                            localizedStringResource(R.string.detail_fallback_dash)
+                        },
+                        alert.endTime.formatLocalizedDateTime(locale).ifBlank {
+                            localizedStringResource(R.string.detail_fallback_dash)
+                        },
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -823,5 +853,50 @@ private fun PollutantMetricCard(
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+    }
+}
+
+@Composable
+private fun appLocale(): Locale {
+    val locales = LocalWeatherForecastContext.current.resources.configuration.locales
+    return if (locales.size() > 0) locales[0] else Locale.getDefault()
+}
+
+private fun String.formatLocalizedTime(locale: Locale): String {
+    if (isBlank()) return this
+    val formatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
+    return parseOffsetDateTimeSafely(this)?.format(formatter)
+        ?: runCatching { LocalTime.parse(this).format(formatter) }.getOrDefault(this)
+}
+
+private fun String.formatLocalizedDate(locale: Locale): String {
+    if (isBlank()) return this
+    val formatter = if (locale.language.startsWith("zh")) {
+        DateTimeFormatter.ofPattern("M月d日 EEE", locale)
+    } else {
+        DateTimeFormatter.ofPattern("EEE, MMM d", locale)
+    }
+    return runCatching { LocalDate.parse(this).format(formatter) }.getOrDefault(this)
+}
+
+private fun String.formatLocalizedDateTime(locale: Locale): String {
+    if (isBlank()) return this
+    val formatter = DateTimeFormatter.ofLocalizedDateTime(
+        FormatStyle.MEDIUM,
+        FormatStyle.SHORT,
+    ).withLocale(locale)
+    val normalizedValue = normalizeOneDigitOffset()
+    return parseOffsetDateTimeSafely(normalizedValue)?.toLocalDateTime()?.format(formatter)
+        ?: runCatching { LocalDateTime.parse(normalizedValue).format(formatter) }.getOrDefault(this)
+}
+
+private fun parseOffsetDateTimeSafely(rawValue: String): OffsetDateTime? {
+    return runCatching { OffsetDateTime.parse(rawValue.normalizeOneDigitOffset()) }.getOrNull()
+}
+
+private fun String.normalizeOneDigitOffset(): String {
+    val oneDigitOffsetPattern = Regex("([+-])(\\d):(\\d{2})$")
+    return oneDigitOffsetPattern.replace(this) { match ->
+        "${match.groupValues[1]}0${match.groupValues[2]}:${match.groupValues[3]}"
     }
 }

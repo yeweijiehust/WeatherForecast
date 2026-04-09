@@ -77,6 +77,27 @@ class HomeScreenTest {
     }
 
     @Test
+    fun contentState_formatsDailyDateForChineseLocale() {
+        composeTestRule.setContent {
+            WeatherForecastLocalizedContent(language = AppLanguage.SimplifiedChinese) {
+                WeatherForecastTheme {
+                    HomeScreen(
+                        uiState = HomeUiState(
+                            state = HomeState.Content(snapshot = sampleSnapshot()),
+                        ),
+                        onManageCitiesClick = {},
+                        onOpenDetail = {},
+                        onPullToRefresh = {},
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onAllNodesWithText("4月9日", substring = true).assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Thu, Apr", substring = true).assertCountEquals(0)
+    }
+
+    @Test
     fun refreshingState_keepsContentVisibleAndShowsRefreshingLabel() {
         composeTestRule.setContent {
             WeatherForecastLocalizedContent(language = AppLanguage.English) {
