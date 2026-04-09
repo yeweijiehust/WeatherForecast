@@ -45,9 +45,14 @@ class WeatherDetailScreenTest {
         composeTestRule.onNodeWithText("Hourly timeline").assertIsDisplayed()
         composeTestRule.onNodeWithText("Daily forecast").assertIsDisplayed()
         composeTestRule.onNodeWithText("Weather alerts").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Rainstorm Blue Warning").assertIsDisplayed()
         composeTestRule.onNodeWithText("1 active alert(s)").assertIsDisplayed()
         composeTestRule.onNodeWithText("Air quality").assertIsDisplayed()
         composeTestRule.onNodeWithText("AQI 86 (Moderate)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Primary pollutant: pm2p5").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Pollutant breakdown").assertIsDisplayed()
+        composeTestRule.onNodeWithText("PM2.5").assertIsDisplayed()
+        composeTestRule.onNodeWithText("65").assertIsDisplayed()
     }
 
     @Test

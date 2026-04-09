@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -19,8 +20,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.yeweijiehust.weatherforecast.R
 import io.github.yeweijiehust.weatherforecast.core.localization.localizedStringResource
+import io.github.yeweijiehust.weatherforecast.domain.model.AirQuality
 import io.github.yeweijiehust.weatherforecast.domain.model.DailyForecast
 import io.github.yeweijiehust.weatherforecast.domain.model.HourlyForecast
+import io.github.yeweijiehust.weatherforecast.domain.model.WeatherAlert
 
 @Composable
 fun WeatherDetailRoute(
@@ -147,13 +150,12 @@ private fun DetailSections(
                 onRetry = onRetryDaily,
             )
             AlertSection(
-                alertCount = state.alerts.size,
+                alerts = state.alerts,
                 isUnavailable = false,
                 onRetry = onRetryAlerts,
             )
             AirQualitySection(
-                aqi = state.airQuality?.aqi,
-                category = state.airQuality?.category,
+                airQuality = state.airQuality,
                 isUnsupported = state.isAirQualityUnsupported,
                 isUnavailable = false,
                 onRetry = onRetryAirQuality,
@@ -172,13 +174,12 @@ private fun DetailSections(
                 onRetry = onRetryDaily,
             )
             AlertSection(
-                alertCount = state.alerts.size,
+                alerts = state.alerts,
                 isUnavailable = WeatherDetailSection.Alerts in unavailableSections,
                 onRetry = onRetryAlerts,
             )
             AirQualitySection(
-                aqi = state.airQuality?.aqi,
-                category = state.airQuality?.category,
+                airQuality = state.airQuality,
                 isUnsupported = state.isAirQualityUnsupported,
                 isUnavailable = WeatherDetailSection.AirQuality in unavailableSections,
                 onRetry = onRetryAirQuality,
@@ -230,6 +231,27 @@ private fun HourlySection(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(12.dp),
                     )
+                    Text(
+                        text = localizedStringResource(
+                            R.string.detail_hourly_precip,
+                            item.precipitation,
+                            item.precipitationProbability,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 6.dp),
+                    )
+                    Text(
+                        text = localizedStringResource(
+                            R.string.detail_hourly_wind,
+                            item.windDirection,
+                            item.windScale,
+                            item.windSpeed,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    )
                 }
             }
         }
@@ -278,6 +300,27 @@ private fun DailySection(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(12.dp),
                     )
+                    Text(
+                        text = localizedStringResource(
+                            R.string.detail_daily_precip,
+                            item.precipitation,
+                            item.precipitationProbability,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 6.dp),
+                    )
+                    Text(
+                        text = localizedStringResource(
+                            R.string.detail_daily_wind,
+                            item.windDirectionDay,
+                            item.windScaleDay,
+                            item.windSpeedDay,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    )
                 }
             }
         }
@@ -286,7 +329,7 @@ private fun DailySection(
 
 @Composable
 private fun AlertSection(
-    alertCount: Int,
+    alerts: List<WeatherAlert>,
     isUnavailable: Boolean,
     onRetry: () -> Unit,
 ) {
@@ -301,21 +344,72 @@ private fun AlertSection(
         )
         return
     }
+    if (alerts.isEmpty()) {
+        Text(
+            text = localizedStringResource(R.string.detail_alert_empty),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
     Text(
-        text = if (alertCount > 0) {
-            localizedStringResource(R.string.detail_alert_count, alertCount)
-        } else {
-            localizedStringResource(R.string.detail_alert_empty)
-        },
+        text = localizedStringResource(R.string.detail_alert_count, alerts.size),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+    alerts.forEach { alert ->
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+            tonalElevation = 1.dp,
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = alert.title.ifBlank { alert.typeName.ifBlank { localizedStringResource(R.string.detail_fallback_dash) } },
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = localizedStringResource(
+                        R.string.detail_alert_meta,
+                        alert.severity.ifBlank { localizedStringResource(R.string.detail_fallback_dash) },
+                        alert.status.ifBlank { localizedStringResource(R.string.detail_fallback_dash) },
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = localizedStringResource(
+                        R.string.detail_alert_time,
+                        alert.startTime.ifBlank { localizedStringResource(R.string.detail_fallback_dash) },
+                        alert.endTime.ifBlank { localizedStringResource(R.string.detail_fallback_dash) },
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (alert.sender.isNotBlank()) {
+                    Text(
+                        text = localizedStringResource(R.string.detail_alert_sender, alert.sender),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (alert.text.isNotBlank()) {
+                    Text(
+                        text = alert.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
 private fun AirQualitySection(
-    aqi: String?,
-    category: String?,
+    airQuality: AirQuality?,
     isUnsupported: Boolean,
     isUnavailable: Boolean,
     onRetry: () -> Unit,
@@ -334,10 +428,12 @@ private fun AirQualitySection(
     Text(
         text = when {
             isUnsupported -> localizedStringResource(R.string.detail_aqi_unsupported_region)
-            !aqi.isNullOrBlank() -> localizedStringResource(
+            !airQuality?.aqi.isNullOrBlank() -> localizedStringResource(
                 R.string.detail_aqi_value,
-                aqi,
-                category.orEmpty().ifBlank { "--" },
+                airQuality.aqi,
+                airQuality.category.ifBlank {
+                    localizedStringResource(R.string.detail_fallback_dash)
+                },
             )
 
             else -> localizedStringResource(R.string.detail_aqi_empty)
@@ -345,6 +441,61 @@ private fun AirQualitySection(
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+    if (airQuality == null || isUnsupported || isUnavailable) {
+        return
+    }
+    Text(
+        text = localizedStringResource(
+            R.string.detail_aqi_primary,
+            airQuality.primary.ifBlank { localizedStringResource(R.string.detail_fallback_dash) },
+        ),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Text(
+        text = localizedStringResource(R.string.detail_aqi_pollutants_title),
+        style = MaterialTheme.typography.labelLarge,
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        PollutantMetricCard(
+            modifier = Modifier.weight(1f),
+            label = "PM2.5",
+            value = airQuality.pm2p5,
+        )
+        PollutantMetricCard(
+            modifier = Modifier.weight(1f),
+            label = "PM10",
+            value = airQuality.pm10,
+        )
+        PollutantMetricCard(
+            modifier = Modifier.weight(1f),
+            label = "NO2",
+            value = airQuality.no2,
+        )
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        PollutantMetricCard(
+            modifier = Modifier.weight(1f),
+            label = "SO2",
+            value = airQuality.so2,
+        )
+        PollutantMetricCard(
+            modifier = Modifier.weight(1f),
+            label = "CO",
+            value = airQuality.co,
+        )
+        PollutantMetricCard(
+            modifier = Modifier.weight(1f),
+            label = "O3",
+            value = airQuality.o3,
+        )
+    }
 }
 
 @Composable
@@ -362,6 +513,34 @@ private fun SectionUnavailable(
         )
         Button(onClick = onRetry) {
             Text(text = localizedStringResource(R.string.action_retry))
+        }
+    }
+}
+
+@Composable
+private fun PollutantMetricCard(
+    modifier: Modifier,
+    label: String,
+    value: String,
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = value.ifBlank { localizedStringResource(R.string.detail_fallback_dash) },
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }

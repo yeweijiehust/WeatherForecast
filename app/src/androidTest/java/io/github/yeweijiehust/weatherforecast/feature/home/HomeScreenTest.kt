@@ -1,7 +1,9 @@
 package io.github.yeweijiehust.weatherforecast.feature.home
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.github.yeweijiehust.weatherforecast.core.localization.WeatherForecastLocalizedContent
@@ -69,6 +71,9 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("Quick Insights").assertIsDisplayed()
         composeTestRule.onNodeWithText("2 active alert(s)").assertIsDisplayed()
         composeTestRule.onNodeWithText("AQI 53 (Good)").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Pollutant breakdown").assertCountEquals(0)
+        composeTestRule.onAllNodesWithText("Primary pollutant:", substring = true).assertCountEquals(0)
+        composeTestRule.onAllNodesWithText("Rainstorm Blue Warning").assertCountEquals(0)
     }
 
     @Test
