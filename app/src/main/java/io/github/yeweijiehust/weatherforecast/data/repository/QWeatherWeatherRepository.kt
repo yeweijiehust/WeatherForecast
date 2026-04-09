@@ -7,6 +7,7 @@ import io.github.yeweijiehust.weatherforecast.data.local.source.HourlyForecastLo
 import io.github.yeweijiehust.weatherforecast.data.remote.api.WeatherApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import io.github.yeweijiehust.weatherforecast.data.remote.mapper.toDomain
+import io.github.yeweijiehust.weatherforecast.data.remote.mapper.toDomainOrNull
 import io.github.yeweijiehust.weatherforecast.data.remote.mapper.toLocalModel
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFailureReason
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
@@ -22,6 +23,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import retrofit2.HttpException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class QWeatherWeatherRepository @Inject constructor(
@@ -169,20 +171,14 @@ class QWeatherWeatherRepository @Inject constructor(
             longitude = longitude,
             language = settings.language.apiCode,
         )
-        return when {
-            response.code == SUCCESS_CODE && response.warning.isNotEmpty() -> {
-                WeatherAlertFetchResult.Available(
-                    alerts = response.warning.map { alertDto -> alertDto.toDomain() },
-                )
-            }
+        val alerts = response.alerts
 
-            response.code == SUCCESS_CODE || response.code == NO_DATA_CODE -> {
-                WeatherAlertFetchResult.Empty
-            }
-
-            else -> {
-                error("Weather alert request failed with code ${response.code}.")
-            }
+        return if (alerts.isNotEmpty()) {
+            WeatherAlertFetchResult.Available(
+                alerts = alerts.map { alertDto -> alertDto.toDomain() },
+            )
+        } else {
+            WeatherAlertFetchResult.Empty
         }
     }
 
@@ -201,20 +197,25 @@ class QWeatherWeatherRepository @Inject constructor(
                 longitude = longitude,
                 language = settings.language.apiCode,
             )
-            when {
-                response.code == SUCCESS_CODE && response.now != null -> {
-                    AirQualityFetchResult.Available(response.now.toDomain())
-                }
-
-                response.code == NO_DATA_CODE -> {
-                    AirQualityFetchResult.UnsupportedRegion
-                }
-
-                response.code == UNAUTHORIZED_CODE -> {
+            response.toDomainOrNull()?.let { airQuality ->
+                AirQualityFetchResult.Available(airQuality)
+            } ?: if (
+                response.metadata.zeroResult == true ||
+                (response.indexes.isEmpty() && response.pollutants.isEmpty())
+            ) {
+                AirQualityFetchResult.UnsupportedRegion
+            } else {
+                AirQualityFetchResult.Failure(AirQualityFailureReason.Unknown)
+            }
+        } catch (_: SocketTimeoutException) {
+            AirQualityFetchResult.Failure(AirQualityFailureReason.Timeout)
+        } catch (httpException: HttpException) {
+            when (httpException.code()) {
+                UNAUTHORIZED_STATUS_CODE -> {
                     AirQualityFetchResult.Failure(AirQualityFailureReason.Unauthorized)
                 }
 
-                response.code == QUOTA_EXCEEDED_CODE -> {
+                QUOTA_EXCEEDED_STATUS_CODE -> {
                     AirQualityFetchResult.Failure(AirQualityFailureReason.QuotaExceeded)
                 }
 
@@ -222,15 +223,12 @@ class QWeatherWeatherRepository @Inject constructor(
                     AirQualityFetchResult.Failure(AirQualityFailureReason.Unknown)
                 }
             }
-        } catch (_: SocketTimeoutException) {
-            AirQualityFetchResult.Failure(AirQualityFailureReason.Timeout)
         }
     }
 
     private companion object {
         private const val SUCCESS_CODE = "200"
-        private const val NO_DATA_CODE = "204"
-        private const val UNAUTHORIZED_CODE = "401"
-        private const val QUOTA_EXCEEDED_CODE = "402"
+        private const val UNAUTHORIZED_STATUS_CODE = 401
+        private const val QUOTA_EXCEEDED_STATUS_CODE = 402
     }
 }

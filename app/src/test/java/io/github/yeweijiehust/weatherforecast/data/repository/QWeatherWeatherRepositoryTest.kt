@@ -11,13 +11,19 @@ import io.github.yeweijiehust.weatherforecast.data.remote.api.WeatherApiService
 import io.github.yeweijiehust.weatherforecast.data.remote.config.QWeatherConfig
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CurrentWeatherDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.CurrentWeatherResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityConcentrationDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityMetadataDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.DailyForecastDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.DailyForecastResponseDto
-import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityCurrentDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityIndexDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityPollutantDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityPrimaryPollutantDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.AirQualityResponseDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.HourlyForecastResponseDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertEventTypeDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertDto
+import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertMetadataDto
 import io.github.yeweijiehust.weatherforecast.data.remote.dto.WeatherAlertResponseDto
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFailureReason
 import io.github.yeweijiehust.weatherforecast.domain.model.AirQualityFetchResult
@@ -34,7 +40,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonPrimitive
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Test
+import retrofit2.HttpException
+import retrofit2.Response
 
 class QWeatherWeatherRepositoryTest {
     @Test
@@ -47,18 +58,20 @@ class QWeatherWeatherRepositoryTest {
                 language = "zh",
             )
         } returns AirQualityResponseDto(
-            code = "200",
-            now = AirQualityCurrentDto(
-                publishTime = "2026-04-08T14:00+08:00",
-                aqi = "86",
-                category = "Moderate",
-                primary = "pm2p5",
-                pm2p5 = "65",
-                pm10 = "72",
-                no2 = "18",
-                so2 = "5",
-                co = "0.7",
-                o3 = "45",
+            metadata = AirQualityMetadataDto(tag = "test-tag"),
+            indexes = listOf(
+                AirQualityIndexDto(
+                    aqi = JsonPrimitive(86),
+                    aqiDisplay = "86",
+                    category = "Moderate",
+                    primaryPollutant = AirQualityPrimaryPollutantDto(code = "pm2p5"),
+                ),
+            ),
+            pollutants = listOf(
+                AirQualityPollutantDto(
+                    code = "pm2p5",
+                    concentration = AirQualityConcentrationDto(value = JsonPrimitive(65)),
+                ),
             ),
         )
         val repository = createRepository(
@@ -87,7 +100,7 @@ class QWeatherWeatherRepositoryTest {
     }
 
     @Test
-    fun fetchAirQuality_returnsUnsupportedRegionFor204() = runTest {
+    fun fetchAirQuality_returnsUnsupportedRegionWhenZeroResult() = runTest {
         val weatherApiService = mockk<WeatherApiService>()
         coEvery {
             weatherApiService.getAirQuality(
@@ -96,8 +109,12 @@ class QWeatherWeatherRepositoryTest {
                 language = "en",
             )
         } returns AirQualityResponseDto(
-            code = "204",
-            now = null,
+            metadata = AirQualityMetadataDto(
+                tag = "test-tag",
+                zeroResult = true,
+            ),
+            indexes = emptyList(),
+            pollutants = emptyList(),
         )
         val repository = createRepository(
             weatherApiService = weatherApiService,
@@ -115,7 +132,7 @@ class QWeatherWeatherRepositoryTest {
     }
 
     @Test
-    fun fetchAirQuality_mapsUnauthorizedCodeToFailure() = runTest {
+    fun fetchAirQuality_supportsCurrentApiSchema() = runTest {
         val weatherApiService = mockk<WeatherApiService>()
         coEvery {
             weatherApiService.getAirQuality(
@@ -123,7 +140,55 @@ class QWeatherWeatherRepositoryTest {
                 longitude = "121.47",
                 language = "en",
             )
-        } returns AirQualityResponseDto(code = "401", now = null)
+        } returns AirQualityResponseDto(
+            metadata = AirQualityMetadataDto(tag = "test-tag"),
+            indexes = listOf(
+                AirQualityIndexDto(
+                    aqi = JsonPrimitive(53),
+                    aqiDisplay = "53",
+                    category = "Good",
+                    primaryPollutant = AirQualityPrimaryPollutantDto(
+                        code = "pm2p5",
+                        name = "PM 2.5",
+                    ),
+                ),
+            ),
+            pollutants = listOf(
+                AirQualityPollutantDto(
+                    code = "pm2p5",
+                    concentration = AirQualityConcentrationDto(value = JsonPrimitive(37.0)),
+                ),
+            ),
+        )
+        val repository = createRepository(
+            weatherApiService = weatherApiService,
+            settingsRepository = FakeSettingsRepository(
+                AppSettings(
+                    language = AppLanguage.English,
+                    unitSystem = UnitSystem.Metric,
+                ),
+            ),
+        )
+
+        val result = repository.fetchAirQuality(latitude = "31.23", longitude = "121.47")
+
+        assertThat(result).isInstanceOf(AirQualityFetchResult.Available::class.java)
+        val available = result as AirQualityFetchResult.Available
+        assertThat(available.airQuality.aqi).isEqualTo("53")
+        assertThat(available.airQuality.category).isEqualTo("Good")
+        assertThat(available.airQuality.pm2p5).isEqualTo("37.0")
+    }
+
+    @Test
+    fun fetchAirQuality_mapsUnauthorizedHttpStatusToFailure() = runTest {
+        val weatherApiService = mockk<WeatherApiService>()
+        coEvery {
+            weatherApiService.getAirQuality(
+                latitude = "31.23",
+                longitude = "121.47",
+                language = "en",
+            )
+        } throws httpException(statusCode = 401)
         val repository = createRepository(
             weatherApiService = weatherApiService,
             settingsRepository = FakeSettingsRepository(
@@ -142,7 +207,7 @@ class QWeatherWeatherRepositoryTest {
     }
 
     @Test
-    fun fetchAirQuality_mapsQuotaCodeToFailure() = runTest {
+    fun fetchAirQuality_mapsQuotaHttpStatusToFailure() = runTest {
         val weatherApiService = mockk<WeatherApiService>()
         coEvery {
             weatherApiService.getAirQuality(
@@ -150,7 +215,7 @@ class QWeatherWeatherRepositoryTest {
                 longitude = "121.47",
                 language = "en",
             )
-        } returns AirQualityResponseDto(code = "402", now = null)
+        } throws httpException(statusCode = 402)
         val repository = createRepository(
             weatherApiService = weatherApiService,
             settingsRepository = FakeSettingsRepository(
@@ -205,21 +270,25 @@ class QWeatherWeatherRepositoryTest {
                 language = "zh",
             )
         } returns WeatherAlertResponseDto(
-            code = "200",
-            warning = listOf(
+            metadata = WeatherAlertMetadataDto(
+                tag = "test-tag",
+                zeroResult = false,
+            ),
+            alerts = listOf(
                 WeatherAlertDto(
-                    id = "10102010020260408120000",
-                    sender = "Shanghai Meteorological Center",
-                    publishTime = "2026-04-08T12:00+08:00",
-                    title = "Rainstorm Blue Warning",
-                    startTime = "2026-04-08T12:00+08:00",
-                    endTime = "2026-04-08T23:00+08:00",
+                    id = "52f63dbf40f5f089f5f69f2d7f929f4f",
+                    senderName = "Shanghai Meteorological Center",
+                    issuedTime = "2026-04-08T12:00+08:00",
+                    headline = "Rainstorm Blue Warning",
+                    onsetTime = "2026-04-08T12:00+08:00",
+                    expireTime = "2026-04-08T23:00+08:00",
                     status = "active",
+                    eventType = WeatherAlertEventTypeDto(
+                        code = "rainstorm",
+                        name = "Rainstorm",
+                    ),
                     severity = "Blue",
-                    severityColor = "Blue",
-                    type = "rainstorm",
-                    typeName = "Rainstorm",
-                    text = "Expect heavy rain in the next 6 hours.",
+                    description = "Expect heavy rain in the next 6 hours.",
                 ),
             ),
         )
@@ -258,8 +327,11 @@ class QWeatherWeatherRepositoryTest {
                 language = "en",
             )
         } returns WeatherAlertResponseDto(
-            code = "204",
-            warning = emptyList(),
+            metadata = WeatherAlertMetadataDto(
+                tag = "test-tag",
+                zeroResult = true,
+            ),
+            alerts = emptyList(),
         )
         val repository = createRepository(
             weatherApiService = weatherApiService,
@@ -277,7 +349,7 @@ class QWeatherWeatherRepositoryTest {
     }
 
     @Test
-    fun fetchWeatherAlerts_throwsWhenApiReturnsFailureCode() = runTest {
+    fun fetchWeatherAlerts_throwsWhenApiReturnsHttpFailure() = runTest {
         val weatherApiService = mockk<WeatherApiService>()
         coEvery {
             weatherApiService.getWeatherAlerts(
@@ -285,10 +357,7 @@ class QWeatherWeatherRepositoryTest {
                 longitude = "121.47",
                 language = "en",
             )
-        } returns WeatherAlertResponseDto(
-            code = "401",
-            warning = emptyList(),
-        )
+        } throws httpException(statusCode = 401)
         val repository = createRepository(
             weatherApiService = weatherApiService,
             settingsRepository = FakeSettingsRepository(
@@ -304,8 +373,7 @@ class QWeatherWeatherRepositoryTest {
         }.exceptionOrNull()
 
         assertThat(error).isNotNull()
-        assertThat(error).isInstanceOf(IllegalStateException::class.java)
-        assertThat(error).hasMessageThat().contains("401")
+        assertThat(error).isInstanceOf(HttpException::class.java)
     }
 
     @Test
@@ -587,7 +655,6 @@ class QWeatherWeatherRepositoryTest {
                     tempMin = "72",
                     conditionTextDay = "Sunny",
                     conditionIconDay = "100",
-                    precipitationProbability = "10",
                     precipitation = "0.0",
                     windDirectionDay = "South",
                     windScaleDay = "3",
@@ -748,6 +815,14 @@ class QWeatherWeatherRepositoryTest {
         language = "en",
         unitSystem = "metric",
     )
+
+    private fun httpException(statusCode: Int): HttpException {
+        val errorResponse = Response.error<Any>(
+            statusCode,
+            "{}".toResponseBody("application/json".toMediaType()),
+        )
+        return HttpException(errorResponse)
+    }
 
     private class FakeCurrentWeatherLocalDataSource(
         currentWeather: CurrentWeatherLocalModel? = null,

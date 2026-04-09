@@ -16,7 +16,7 @@ fun DailyForecastDto.toLocalModel(
         tempMin = tempMin,
         conditionTextDay = conditionTextDay,
         conditionIconDay = conditionIconDay,
-        precipitationProbability = precipitationProbability,
+        precipitationProbability = "--",
         precipitation = precipitation,
         windDirectionDay = windDirectionDay,
         windScaleDay = windScaleDay,

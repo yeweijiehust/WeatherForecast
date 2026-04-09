@@ -8,14 +8,13 @@ import org.junit.Test
 
 class DailyForecastMapperTest {
     @Test
-    fun dtoToLocalAndDomain_preservesDailyForecastFields() {
+    fun dtoToLocalAndDomain_preservesDailyForecastFieldsAndUsesFallbackForPop() {
         val dto = DailyForecastDto(
             forecastDate = "2026-04-09",
             tempMax = "30",
             tempMin = "22",
             conditionTextDay = "Sunny",
             conditionIconDay = "100",
-            precipitationProbability = "10",
             precipitation = "0.0",
             windDirectionDay = "South",
             windScaleDay = "3",
@@ -32,7 +31,7 @@ class DailyForecastMapperTest {
 
         assertThat(localModel.cityId).isEqualTo("101020100")
         assertThat(localModel.conditionTextDay).isEqualTo("Sunny")
-        assertThat(localModel.precipitationProbability).isEqualTo("10")
+        assertThat(localModel.precipitationProbability).isEqualTo("--")
         assertThat(localModel.language).isEqualTo("en")
         assertThat(localModel.unitSystem).isEqualTo("metric")
         assertThat(domainModel.cityId).isEqualTo("101020100")
@@ -42,4 +41,5 @@ class DailyForecastMapperTest {
         assertThat(domainModel.conditionIconDay).isEqualTo("100")
         assertThat(domainModel.fetchedAtEpochMillis).isEqualTo(1234L)
     }
+
 }

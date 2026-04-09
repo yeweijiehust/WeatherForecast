@@ -2,35 +2,58 @@ package io.github.yeweijiehust.weatherforecast.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class AirQualityResponseDto(
-    @SerialName("code")
-    val code: String,
-    @SerialName("now")
-    val now: AirQualityCurrentDto? = null,
+    @SerialName("metadata")
+    val metadata: AirQualityMetadataDto,
+    @SerialName("indexes")
+    val indexes: List<AirQualityIndexDto> = emptyList(),
+    @SerialName("pollutants")
+    val pollutants: List<AirQualityPollutantDto> = emptyList(),
 )
 
 @Serializable
-data class AirQualityCurrentDto(
-    @SerialName("pubTime")
-    val publishTime: String? = null,
+data class AirQualityMetadataDto(
+    @SerialName("tag")
+    val tag: String? = null,
+    @SerialName("zeroResult")
+    val zeroResult: Boolean? = null,
+)
+
+@Serializable
+data class AirQualityIndexDto(
+    @SerialName("aqiDisplay")
+    val aqiDisplay: String? = null,
     @SerialName("aqi")
-    val aqi: String? = null,
+    val aqi: JsonElement? = null,
     @SerialName("category")
     val category: String? = null,
-    @SerialName("primary")
-    val primary: String? = null,
-    @SerialName("pm2p5")
-    val pm2p5: String? = null,
-    @SerialName("pm10")
-    val pm10: String? = null,
-    @SerialName("no2")
-    val no2: String? = null,
-    @SerialName("so2")
-    val so2: String? = null,
-    @SerialName("co")
-    val co: String? = null,
-    @SerialName("o3")
-    val o3: String? = null,
+    @SerialName("primaryPollutant")
+    val primaryPollutant: AirQualityPrimaryPollutantDto? = null,
+)
+
+@Serializable
+data class AirQualityPrimaryPollutantDto(
+    @SerialName("code")
+    val code: String? = null,
+    @SerialName("name")
+    val name: String? = null,
+)
+
+@Serializable
+data class AirQualityPollutantDto(
+    @SerialName("code")
+    val code: String? = null,
+    @SerialName("concentration")
+    val concentration: AirQualityConcentrationDto? = null,
+)
+
+@Serializable
+data class AirQualityConcentrationDto(
+    @SerialName("value")
+    val value: JsonElement? = null,
+    @SerialName("unit")
+    val unit: String? = null,
 )
